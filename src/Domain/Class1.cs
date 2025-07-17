@@ -1,6 +1,1 @@
-﻿namespace Domain;
-
-public class Class1
-{
-
-}
+﻿namespace Talabeyah.OrderManagement.Domain.Entities;
