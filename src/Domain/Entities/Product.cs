@@ -5,6 +5,7 @@ public class Product
     public int Id { get; private set; }
     public string Name { get; private set; }
     public int Inventory { get; private set; }
+    public byte[] RowVersion { get; set; } // For optimistic concurrency
 
     public Product(int id, string name, int inventory)
     {

@@ -16,6 +16,7 @@ public class OrderManagementDbContext : DbContext
         modelBuilder.Entity<Product>().HasKey(p => p.Id);
         modelBuilder.Entity<Order>().HasKey(o => o.Id);
         modelBuilder.Entity<AuditLog>().HasKey(a => a.Id);
+        modelBuilder.Entity<Product>().Property(p => p.RowVersion).IsRowVersion();
         // Configure OrderItem as owned entity
         modelBuilder.Entity<Order>().OwnsMany(o => o.Items, oi =>
         {
