@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Talabeyah.OrderManagement.Domain.Entities;
+using Talabeyah.OrderManagement.Infrastructure.Entities;
 
 namespace Talabeyah.OrderManagement.Infrastructure;
 
-public class OrderManagementDbContext : DbContext
+public class OrderManagementDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, string>
 {
     public OrderManagementDbContext(DbContextOptions<OrderManagementDbContext> options) : base(options) { }
 
@@ -13,6 +15,7 @@ public class OrderManagementDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
         modelBuilder.Entity<Product>().HasKey(p => p.Id);
         modelBuilder.Entity<Order>().HasKey(o => o.Id);
         modelBuilder.Entity<AuditLog>().HasKey(a => a.Id);
