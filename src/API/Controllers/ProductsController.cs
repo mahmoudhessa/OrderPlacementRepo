@@ -1,10 +1,12 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Talabeyah.OrderManagement.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = "Admin,Sales,InventoryManager")]
 public class ProductsController : ControllerBase
 {
     private readonly IMediator _mediator;

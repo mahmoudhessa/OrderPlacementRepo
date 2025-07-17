@@ -4,11 +4,13 @@ using Talabeyah.OrderManagement.Application.Orders.Commands;
 using Talabeyah.OrderManagement.Application.Orders.Queries;
 using FluentValidation;
 using FluentValidation.Results;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Talabeyah.OrderManagement.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = "Admin,Sales")]
 public class OrdersController : ControllerBase
 {
     private readonly IMediator _mediator;
