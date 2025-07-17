@@ -13,11 +13,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/mahmoudhassan/Talabeyah.OrderManagement/Application/Application.csproj",
+      "projectUniqueName": "/Users/mahmoudhassan/Talabeyah.OrderManagement/src/Application/Application.csproj",
       "projectName": "Application",
-      "projectPath": "/Users/mahmoudhassan/Talabeyah.OrderManagement/Application/Application.csproj",
+      "projectPath": "/Users/mahmoudhassan/Talabeyah.OrderManagement/src/Application/Application.csproj",
       "packagesPath": "/Users/mahmoudhassan/.nuget/packages/",
-      "outputPath": "/Users/mahmoudhassan/Talabeyah.OrderManagement/Application/obj/",
+      "outputPath": "/Users/mahmoudhassan/Talabeyah.OrderManagement/src/Application/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/Users/mahmoudhassan/.nuget/NuGet/NuGet.Config"

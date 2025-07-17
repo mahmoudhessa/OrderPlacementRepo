@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "OtR+oHbJQTI=",
+  "dgSpecHash": "jxZSe1gBDLY=",
   "success": true,
-  "projectFilePath": "/Users/mahmoudhassan/Talabeyah.OrderManagement/Worker/Worker.csproj",
+  "projectFilePath": "/Users/mahmoudhassan/Talabeyah.OrderManagement/src/Worker/Worker.csproj",
   "expectedPackageFiles": [
     "/Users/mahmoudhassan/.nuget/packages/microsoft.extensions.configuration/8.0.0/microsoft.extensions.configuration.8.0.0.nupkg.sha512",
     "/Users/mahmoudhassan/.nuget/packages/microsoft.extensions.configuration.abstractions/8.0.0/microsoft.extensions.configuration.abstractions.8.0.0.nupkg.sha512",

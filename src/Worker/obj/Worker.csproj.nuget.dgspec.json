@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Users/mahmoudhassan/Talabeyah.OrderManagement/Worker/Worker.csproj": {}
+    "/Users/mahmoudhassan/Talabeyah.OrderManagement/src/Worker/Worker.csproj": {}
   },
   "projects": {
-    "/Users/mahmoudhassan/Talabeyah.OrderManagement/Worker/Worker.csproj": {
+    "/Users/mahmoudhassan/Talabeyah.OrderManagement/src/Worker/Worker.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/mahmoudhassan/Talabeyah.OrderManagement/Worker/Worker.csproj",
+        "projectUniqueName": "/Users/mahmoudhassan/Talabeyah.OrderManagement/src/Worker/Worker.csproj",
         "projectName": "Worker",
-        "projectPath": "/Users/mahmoudhassan/Talabeyah.OrderManagement/Worker/Worker.csproj",
+        "projectPath": "/Users/mahmoudhassan/Talabeyah.OrderManagement/src/Worker/Worker.csproj",
         "packagesPath": "/Users/mahmoudhassan/.nuget/packages/",
-        "outputPath": "/Users/mahmoudhassan/Talabeyah.OrderManagement/Worker/obj/",
+        "outputPath": "/Users/mahmoudhassan/Talabeyah.OrderManagement/src/Worker/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/mahmoudhassan/.nuget/NuGet/NuGet.Config"

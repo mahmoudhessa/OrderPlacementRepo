@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "zSlz9eb+HSY=",
+  "dgSpecHash": "IquOk8KbwvA=",
   "success": true,
-  "projectFilePath": "/Users/mahmoudhassan/Talabeyah.OrderManagement/Domain/Domain.csproj",
+  "projectFilePath": "/Users/mahmoudhassan/Talabeyah.OrderManagement/src/Domain/Domain.csproj",
   "expectedPackageFiles": [],
   "logs": []
 }
