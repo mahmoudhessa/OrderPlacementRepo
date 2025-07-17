@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Talabeyah.OrderManagement.Domain.Entities;
 using Talabeyah.OrderManagement.Domain.Interfaces;
 
@@ -13,4 +14,7 @@ public class AuditLogRepository : IAuditLogRepository
         _db.AuditLogs.Add(log);
         await _db.SaveChangesAsync();
     }
+
+    public async Task<List<AuditLog>> GetAllAsync()
+        => await _db.AuditLogs.OrderByDescending(a => a.CreatedAt).ToListAsync();
 } 
