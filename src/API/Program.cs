@@ -11,6 +11,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers();
+// Register OrderNotifier for IOrderNotifier
+builder.Services.AddScoped<Talabeyah.OrderManagement.Application.Orders.Commands.IOrderNotifier, Talabeyah.OrderManagement.API.Hubs.OrderNotifier>();
 
 // Add DbContext and Identity
 builder.Services.AddDbContext<OrderManagementDbContext>();
@@ -108,5 +110,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<Talabeyah.OrderManagement.API.Hubs.OrderHub>("/orderHub");
 
 app.Run();

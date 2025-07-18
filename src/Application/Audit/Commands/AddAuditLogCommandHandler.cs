@@ -4,7 +4,7 @@ using Talabeyah.OrderManagement.Domain.Interfaces;
 
 namespace Talabeyah.OrderManagement.Application.Audit.Commands;
 
-public class AddAuditLogCommandHandler : IRequestHandler<AddAuditLogCommand>
+public class AddAuditLogCommandHandler : IRequestHandler<AddAuditLogCommand, Unit>
 {
     private readonly IAuditLogRepository _auditLogRepository;
 
