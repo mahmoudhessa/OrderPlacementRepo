@@ -1,63 +1,216 @@
 # Talabeyah Order Management System
 
-## 🏗️ Tech Stack
-- .NET Core 8 (Clean Architecture, DDD, CQRS, MediatR, SignalR)
-- Angular (frontend)
-- SQL Server
-- Kafka
-- Docker Compose
+A full-stack order management system built with Angular frontend and .NET Core backend, featuring real-time notifications, Kafka messaging, and Azure SQL Edge database.
 
-## 🚀 Quick Start (Docker Compose)
+## 🏗️ Architecture
+
+- **Frontend**: Angular 16 with Angular Material UI
+- **Backend**: .NET 8 with Clean Architecture
+- **Database**: Azure SQL Edge (Mac) / MS SQL Server (Windows)
+- **Messaging**: Apache Kafka
+- **Real-time**: SignalR
+- **Containerization**: Docker & Docker Compose
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Docker Desktop** (with Docker Compose)
+- **Node.js** (v18 or higher) - for local frontend development
+- **.NET 8 SDK** - for local backend development (optional)
+
+### 1. Clone the Repository
+
 ```bash
-docker-compose up --build
+git clone <your-repository-url>
+cd Talabeyah.OrderManagement
 ```
-- Frontend: http://localhost:4200
-- Backend API/Swagger: http://localhost:5000/swagger
 
-## 👤 Demo Users & Roles
-| Username              | Password   | Role(s)             |
-|-----------------------|------------|---------------------|
-| admin@demo.com        | Passw0rd!  | Admin               |
-| sales@demo.com        | Passw0rd!  | Sales               |
-| auditor@demo.com      | Passw0rd!  | Auditor             |
-| inventory@demo.com    | Passw0rd!  | InventoryManager    |
+### 2. Quick Setup (Recommended)
 
-### Role Access Matrix
-| Role              | Orders | Products | Audit Logs | Users |
-|-------------------|--------|----------|------------|-------|
-| **Admin**         | ✅     | ✅ (CRUD) | ✅         | ✅    |
-| **Sales**         | ✅     | ✅ (view) | ❌         | ❌    |
-| **Auditor**       | ❌     | ❌       | ✅         | ❌    |
-| **InventoryManager** | ❌  | ✅ (CRUD) | ❌         | ❌    |
+#### For Mac/Linux:
+```bash
+./setup.sh
+```
 
-## 📝 API Endpoints
-- `/api/auth/login` (POST): Login, returns JWT
-- `/api/orders` (GET/POST): List/create orders
-- `/api/products` (GET): List products
-- `/api/auditlogs` (GET): List audit logs
-- `/orderHub`: SignalR real-time order updates
+#### For Windows:
+```cmd
+setup.bat
+```
+
+### 3. Manual Setup (Alternative)
+
+If you prefer to set up manually:
+
+#### Install Frontend Dependencies
+```bash
+cd frontend
+npm install
+```
+
+#### Run with Docker Compose
+
+#### For Mac (Azure SQL Edge):
+```bash
+docker-compose -f docker-compose.azure-sql-edge.yml up --build -d
+```
+
+#### For Windows (MS SQL Server):
+```bash
+docker-compose up --build -d
+```
+
+### 4. Access the Application
+
+- **Frontend**: http://localhost:4200
+- **Backend API**: http://localhost:5001
+- **Swagger UI**: http://localhost:5001/swagger
+- **Database**: localhost:1433
+
+## 🛠️ Development Setup
+
+### Frontend Development
+
+```bash
+cd frontend
+npm install          # Install dependencies
+npm start           # Start development server
+```
+
+### Backend Development
+
+```bash
+cd backend
+dotnet restore      # Restore packages
+dotnet build        # Build solution
+cd API
+dotnet run          # Run API
+```
+
+## 📁 Project Structure
+
+```
+├── frontend/                 # Angular application
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── auth/        # Authentication components
+│   │   │   ├── orders/      # Order management
+│   │   │   ├── products/    # Product catalog
+│   │   │   └── audit-logs/  # Audit trail
+│   │   └── styles.scss      # Global styles
+│   ├── package.json         # Frontend dependencies
+│   └── angular.json         # Angular configuration
+├── backend/                  # .NET solution
+│   ├── API/                 # Web API project
+│   ├── Application/         # Application layer (CQRS)
+│   ├── Domain/              # Domain layer (entities, interfaces)
+│   ├── Infrastructure/      # Infrastructure layer (EF, Kafka)
+│   └── Worker/              # Background services
+├── docker-compose.yml       # Windows configuration
+├── docker-compose.azure-sql-edge.yml  # Mac configuration
+└── README.md               # This file
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+The application uses the following environment variables:
+
+```env
+# Database
+ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=OrderManagement;User Id=sa;Password=YourStrongPassword123;TrustServerCertificate=true;
+
+# JWT Authentication
+JWT__SecretKey=YourSuperSecretKeyHereThatIsAtLeast32CharactersLong
+JWT__Issuer=YourApp
+JWT__Audience=YourApp
+JWT__ExpirationMinutes=60
+
+# Kafka
+Kafka__BootstrapServers=kafka:29092
+```
+
+### Docker Compose Files
+
+- **`docker-compose.yml`**: Windows configuration with MS SQL Server
+- **`docker-compose.azure-sql-edge.yml`**: Mac configuration with Azure SQL Edge
 
 ## 🧪 Testing
-- Unit tests: `src/Tests/` (NUnit)
-- To run tests:
-  ```bash
-  dotnet test src/Tests/Tests.csproj
-  ```
-- Concurrency is tested by simulating two orders for the last item; only one should succeed.
 
-## 🛠️ Manual Run (Dev)
-- Backend: `dotnet run --project src/API`
-- Frontend: `cd frontend && npm install && ng serve`
-- Worker: `dotnet run --project src/Worker`
+### Frontend Tests
+```bash
+cd frontend
+npm test
+```
 
-## 🗃️ Database Seeding
-- Products and demo users/roles are seeded automatically on first run.
+### Backend Tests
+```bash
+cd backend
+dotnet test
+```
 
-## 📡 Real-Time
-- Orders are broadcast to all clients via SignalR after creation.
+## 📦 Dependencies
 
-## 🛡️ Security
-- JWT authentication, RBAC, CORS, CSP, and validation throughout.
+### Frontend Dependencies
+- Angular 16
+- Angular Material
+- Angular CDK
+- SignalR Client
+- JWT Authentication
+- RxJS
 
----
-**For any issues, see the code comments or contact the maintainer.**
+### Backend Dependencies
+- .NET 8
+- Entity Framework Core
+- MediatR (CQRS)
+- SignalR
+- Confluent.Kafka
+- FluentValidation
+- Swagger/OpenAPI
+
+## 🔄 Database Migrations
+
+The database is automatically initialized when the application starts. If you need to run migrations manually:
+
+```bash
+cd backend/API
+dotnet ef database update
+```
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+1. **Port conflicts**: Ensure ports 4200, 5001, and 1433 are available
+2. **Database connection**: Check if the SQL Server container is running
+3. **Frontend not loading**: Verify `npm install` was run in the frontend directory
+4. **Docker issues**: Restart Docker Desktop and try again
+
+### Logs
+
+```bash
+# View all container logs
+docker-compose logs
+
+# View specific service logs
+docker-compose logs backend
+docker-compose logs frontend
+docker-compose logs sqlserver
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🆘 Support
+
+For issues and questions, please create an issue in the repository.
