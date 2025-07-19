@@ -21,6 +21,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatTableModule } from '@angular/material/table';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatToolbarModule } from '@angular/material/toolbar';
 
 @NgModule({
   declarations: [
@@ -45,6 +47,8 @@ import { MatTableModule } from '@angular/material/table';
     MatIconModule,
     MatListModule,
     MatTableModule,
+    MatSidenavModule,
+    MatToolbarModule,
     JwtModule.forRoot({
       config: {
         tokenGetter: () => localStorage.getItem('jwt_token'),

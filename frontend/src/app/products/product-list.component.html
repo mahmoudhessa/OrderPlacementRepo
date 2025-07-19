@@ -1,0 +1,14 @@
+<div *ngIf="showAddProduct" class="add-product-form">
+  <form [formGroup]="addProductForm" (ngSubmit)="onAddProduct()">
+    <mat-form-field appearance="fill">
+      <mat-label>Product Name</mat-label>
+      <input matInput formControlName="name" required />
+    </mat-form-field>
+    <mat-form-field appearance="fill">
+      <mat-label>Inventory</mat-label>
+      <input matInput type="number" formControlName="inventory" required min="0" />
+    </mat-form-field>
+    <button mat-raised-button color="primary" type="submit" [disabled]="addProductForm.invalid">Add Product</button>
+  </form>
+</div>
+<div *ngIf="error" style="color:#d32f2f;font-weight:bold;text-align:center;margin-bottom:12px;">{{ error }}</div> 

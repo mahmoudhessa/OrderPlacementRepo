@@ -11,7 +11,7 @@ namespace Talabeyah.OrderManagement.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Sales")]
+[Authorize]
 public class OrdersController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -25,39 +25,43 @@ public class OrdersController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] PlaceOrderCommand clientCommand)
     {
-        // Extract BuyerId from JWT
-        var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(buyerId))
-            return Unauthorized("Buyer ID not found in token.");
-        var command = new PlaceOrderCommand(buyerId, clientCommand.Products);
-        ValidationResult validationResult = await _validator.ValidateAsync(command);
-        if (!validationResult.IsValid)
-            return BadRequest(validationResult.Errors.Select(e => e.ErrorMessage));
+        var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
+        var roles = User.Claims.Where(c => c.Type == System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
+        clientCommand.UserId = userId;
+        clientCommand.Roles = roles;
         try
         {
-            var orderId = await _mediator.Send(command);
+            var orderId = await _mediator.Send(clientCommand);
             return Ok(new { orderId });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
         catch (Exception ex)
         {
-            if (ex.Message.Contains("not found"))
-                return NotFound(ex.Message);
-            if (ex.Message.Contains("Insufficient inventory"))
-                return Conflict(ex.Message);
-            if (ex.Message.Contains("concurrency"))
-                return Conflict(ex.Message);
             return StatusCode(500, ex.Message);
         }
     }
 
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? buyerId = null)
+    public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
-        var isAdmin = User.IsInRole("Admin");
-        string? effectiveBuyerId = isAdmin ? buyerId : User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!isAdmin && string.IsNullOrEmpty(effectiveBuyerId))
-            return Unauthorized("Buyer ID not found in token.");
-        var result = await _mediator.Send(new GetOrdersQuery(effectiveBuyerId, page, pageSize));
-        return Ok(result);
+        var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
+        var roles = User.Claims.Where(c => c.Type == System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
+        var query = new GetOrdersQuery(null, page, pageSize) { UserId = userId, Roles = roles };
+        try
+        {
+            var orders = await _mediator.Send(query);
+            return Ok(orders);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ex.Message);
+        }
     }
 } 

@@ -11,13 +11,17 @@ import { Router } from '@angular/router';
         <form (ngSubmit)="login()" style="display:flex;flex-direction:column;gap:20px;">
           <mat-form-field appearance="outline">
             <mat-label>Email</mat-label>
-            <mat-select [(ngModel)]="email" name="email" required>
-              <mat-option *ngFor="let e of dummyEmails" [value]="e.email">{{ e.email }} ({{ e.role }})</mat-option>
-            </mat-select>
+            <input matInput [(ngModel)]="email" name="email" required type="email" autocomplete="username" />
           </mat-form-field>
+          <div style="font-size:12px;color:#888;margin-bottom:8px;">
+            <span>Test emails:</span>
+            <span *ngFor="let e of dummyEmails" style="display:inline-block;margin-right:8px;">
+              <span style="font-family:monospace;">{{ e.email }}</span> ({{ e.role }})
+            </span>
+          </div>
           <mat-form-field appearance="outline">
             <mat-label>Password</mat-label>
-            <input matInput [type]="hide ? 'password' : 'text'" [(ngModel)]="password" name="password" required />
+            <input matInput [type]="hide ? 'password' : 'text'" [(ngModel)]="password" name="password" required autocomplete="current-password" />
             <button mat-icon-button matSuffix (click)="hide = !hide" [attr.aria-label]="hide ? 'Show password' : 'Hide password'" type="button">
               <mat-icon>{{hide ? 'visibility_off' : 'visibility'}}</mat-icon>
             </button>
@@ -49,9 +53,18 @@ export class LoginComponent {
     if (selected && this.password === '') {
       this.password = selected.password;
     }
+    this.error = '';
     this.auth.login(this.email, this.password).subscribe({
       next: () => this.router.navigate(['/']),
-      error: err => this.error = 'Invalid credentials'
+      error: err => {
+        if (err && err.backendDown) {
+          this.error = 'Backend is down. Please try again later.';
+        } else if (err && err.status === 401) {
+          this.error = 'Invalid credentials';
+        } else {
+          this.error = 'An unexpected error occurred.';
+        }
+      }
     });
   }
 } 

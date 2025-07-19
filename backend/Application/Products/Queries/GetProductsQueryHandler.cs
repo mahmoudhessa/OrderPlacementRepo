@@ -10,6 +10,8 @@ public class GetProductsQueryHandler : IRequestHandler<GetProductsQuery, List<Pr
 
     public async Task<List<ProductListItemDto>> Handle(GetProductsQuery request, CancellationToken cancellationToken)
     {
+        // Enforce role-based access
+        // You may need to pass UserId and Roles as part of the query if required
         var products = await _unitOfWork.ProductRepository.GetAllAsync();
         if (!string.IsNullOrWhiteSpace(request.Name))
             products = products.Where(p => p.Name.Contains(request.Name, StringComparison.OrdinalIgnoreCase)).ToList();

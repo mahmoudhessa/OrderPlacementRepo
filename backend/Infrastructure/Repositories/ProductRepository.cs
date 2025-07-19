@@ -21,4 +21,10 @@ public class ProductRepository : IProductRepository
         _db.Products.Update(product);
         await _db.SaveChangesAsync();
     }
+
+    public async Task AddAsync(Product product)
+    {
+        await _db.Products.AddAsync(product);
+        await _db.SaveChangesAsync();
+    }
 } 

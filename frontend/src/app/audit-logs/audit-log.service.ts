@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { ApiBaseService } from '../core/api-base.service';
 import { Observable } from 'rxjs';
 
 export interface AuditLog {
@@ -10,11 +10,9 @@ export interface AuditLog {
 
 @Injectable({ providedIn: 'root' })
 export class AuditLogService {
-  private apiUrl = 'http://localhost:5000/api/auditlogs';
-
-  constructor(private http: HttpClient) {}
+  constructor(private api: ApiBaseService) {}
 
   getAuditLogs(): Observable<AuditLog[]> {
-    return this.http.get<AuditLog[]>(this.apiUrl);
+    return this.api.get<AuditLog[]>('/api/auditlogs');
   }
 } 

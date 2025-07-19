@@ -27,9 +27,7 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Progr
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Talabeyah.OrderManagement.Application.Products.Queries.GetProductsQuery).Assembly));
 
 // Register services
-// builder.Services.AddScoped<Talabeyah.OrderManagement.Infrastructure.Notifications.IOrderNotifier, Talabeyah.OrderManagement.API.Hubs.OrderNotifier>();
-builder.Services.AddScoped<Talabeyah.OrderManagement.Domain.Interfaces.IUnitOfWork, Talabeyah.OrderManagement.Infrastructure.Persistence.UnitOfWork>();
-builder.Services.AddScoped<Talabeyah.OrderManagement.Domain.Interfaces.INotificationService, Talabeyah.OrderManagement.Infrastructure.Notifications.OrderNotifier>();
+builder.Services.AddScoped<Talabeyah.OrderManagement.Domain.Interfaces.INotificationService, Talabeyah.OrderManagement.Infrastructure.Notifications.OrderNotificationService>();
 builder.Services.AddScoped<Talabeyah.OrderManagement.Domain.Interfaces.ISignalRService, Talabeyah.OrderManagement.Infrastructure.Notifications.SignalRService>();
 
 // Register domain services
@@ -46,12 +44,14 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
     .AddEntityFrameworkStores<OrderManagementDbContext>()
     .AddDefaultTokenProviders();
 
+// Register UnitOfWork
+builder.Services.AddScoped<Talabeyah.OrderManagement.Domain.Interfaces.IUnitOfWork, Talabeyah.OrderManagement.Infrastructure.Persistence.UnitOfWork>();
+
 // Add SignInManager
 builder.Services.AddScoped<SignInManager<ApplicationUser>>();
 
 // JWT Authentication
-/*
-var jwtSettings = builder.Configuration.GetSection("JWT");
+var jwtSettings = builder.Configuration.GetSection("Jwt");
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -67,25 +67,8 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]))
     };
-});
-*/
-
-// CORS
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("FrontendAndSwagger", policy =>
-    {
-        policy.WithOrigins(
-            "http://localhost:4200", // Angular
-            "https://localhost:5001", // Swagger UI (if using HTTPS)
-            "http://localhost:5001"   // Swagger UI (if using HTTP)
-        )
-        .AllowAnyHeader()
-        .AllowAnyMethod()
-        .AllowCredentials();
-    });
 });
 
 // Add Swagger
@@ -114,6 +97,17 @@ builder.Services.AddSwaggerGen(c =>
             },
             new string[] {}
         }
+    });
+});
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:4200")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -156,10 +150,10 @@ app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
-app.UseCors("FrontendAndSwagger");
-
-// app.UseAuthentication();
-// app.UseAuthorization();
+// Place this BEFORE UseAuthentication and UseAuthorization
+app.UseCors("AllowFrontend");
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Register IdempotencyMiddleware before controllers
 app.UseMiddleware<Talabeyah.OrderManagement.API.IdempotencyMiddleware>();

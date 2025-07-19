@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { ApiBaseService } from '../core/api-base.service';
 import { Observable } from 'rxjs';
 
 export interface OrderProduct {
@@ -9,15 +9,13 @@ export interface OrderProduct {
 
 @Injectable({ providedIn: 'root' })
 export class OrderService {
-  private apiUrl = 'http://localhost:5000/api/orders';
-
-  constructor(private http: HttpClient) {}
+  constructor(private api: ApiBaseService) {}
 
   placeOrder(products: OrderProduct[]): Observable<{ orderId: number }> {
-    return this.http.post<{ orderId: number }>(this.apiUrl, { products });
+    return this.api.post<{ orderId: number }>('/api/orders', { products });
   }
 
   getOrders(page = 1, pageSize = 10): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}?page=${page}&pageSize=${pageSize}`);
+    return this.api.get<any>(`/api/orders?page=${page}&pageSize=${pageSize}`);
   }
 } 

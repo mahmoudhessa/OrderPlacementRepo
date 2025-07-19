@@ -27,6 +27,10 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, int>
 
     public async Task<int> Handle(PlaceOrderCommand request, CancellationToken cancellationToken)
     {
+        // Only Buyer can place orders for themselves
+        if (!(request.Roles.Contains("Buyer") && request.UserId == request.BuyerId))
+            throw new UnauthorizedAccessException("User does not have permission to place this order.");
+
         // Business rule: max allowed quantity per order
         if (request.Products.Sum(p => p.Quantity) > 10)
             throw new Exception("Cannot order more than 10 items per order.");

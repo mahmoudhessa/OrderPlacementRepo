@@ -9,6 +9,7 @@ import { OrderRealtimeService } from './order-realtime.service';
       <mat-card class="highlight-card" style="width:100%;max-width:900px;">
         <h2>Orders</h2>
         <div *ngIf="notification" class="notification">{{ notification }}</div>
+        <div *ngIf="error" style="color:#d32f2f;font-weight:bold;text-align:center;margin-bottom:12px;">{{ error }}</div>
         <table mat-table [dataSource]="orders" class="mat-elevation-z1" style="width:100%;margin-bottom:16px;">
           <ng-container matColumnDef="id">
             <th mat-header-cell *matHeaderCellDef>ID</th>
@@ -41,6 +42,14 @@ import { OrderRealtimeService } from './order-realtime.service';
       border-radius: 4px;
       font-weight: bold;
     }
+    .error {
+      background: #ffe0e0;
+      color: #d32f2f;
+      padding: 0.5rem 1rem;
+      margin-bottom: 1rem;
+      border-radius: 4px;
+      font-weight: bold;
+    }
   `]
 })
 export class OrderListComponent implements OnInit {
@@ -49,6 +58,7 @@ export class OrderListComponent implements OnInit {
   pageSize = 10;
   total = 0;
   notification = '';
+  error: string = '';
 
   constructor(
     private orderService: OrderService,
@@ -65,9 +75,19 @@ export class OrderListComponent implements OnInit {
   }
 
   load() {
-    this.orderService.getOrders(this.page, this.pageSize).subscribe(res => {
-      this.orders = res.orders;
-      this.total = res.totalCount;
+    this.error = '';
+    this.orderService.getOrders(this.page, this.pageSize).subscribe({
+      next: res => {
+        this.orders = res.items || res;
+        this.total = res.total || 0;
+      },
+      error: err => {
+        if (err && err.backendDown) {
+          this.error = 'Backend is down. Please try again later.';
+        } else {
+          this.error = 'Failed to load orders.';
+        }
+      }
     });
   }
 

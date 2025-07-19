@@ -14,19 +14,27 @@ public class GetOrdersQueryHandler : IRequestHandler<GetOrdersQuery, GetOrdersRe
 
     public async Task<GetOrdersResult> Handle(GetOrdersQuery request, CancellationToken cancellationToken)
     {
-        List<Domain.Entities.Order> orders;
-        int total;
-        if (string.IsNullOrEmpty(request.BuyerId))
+        if (request.Roles.Contains("Admin"))
         {
+            List<Domain.Entities.Order> orders;
+            int total;
             orders = await _orderRepository.GetPagedAsync(request.Page, request.PageSize);
             total = await _orderRepository.CountAsync();
+            var dtos = orders.Select(o => new OrderListItemDto(o.Id, o.Status.ToString(), o.CreatedAt)).ToList();
+            return new GetOrdersResult(dtos, total);
+        }
+        else if (request.Roles.Contains("Buyer") && request.UserId != null)
+        {
+            List<Domain.Entities.Order> orders;
+            int total;
+            orders = await _orderRepository.GetPagedByBuyerAsync(request.UserId, request.Page, request.PageSize);
+            total = await _orderRepository.CountByBuyerAsync(request.UserId);
+            var dtos = orders.Select(o => new OrderListItemDto(o.Id, o.Status.ToString(), o.CreatedAt)).ToList();
+            return new GetOrdersResult(dtos, total);
         }
         else
         {
-            orders = await _orderRepository.GetPagedByBuyerAsync(request.BuyerId, request.Page, request.PageSize);
-            total = await _orderRepository.CountByBuyerAsync(request.BuyerId);
+            throw new UnauthorizedAccessException("User does not have permission to view these orders.");
         }
-        var dtos = orders.Select(o => new OrderListItemDto(o.Id, o.Status.ToString(), o.CreatedAt)).ToList();
-        return new GetOrdersResult(dtos, total);
     }
 } 

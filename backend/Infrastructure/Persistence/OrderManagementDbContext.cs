@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Talabeyah.OrderManagement.Domain.Entities;
 // using Talabeyah.OrderManagement.Infrastructure.Entities; // No longer needed
@@ -25,6 +26,17 @@ public class OrderManagementDbContext : IdentityDbContext<ApplicationUser, Appli
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        
+        // Configure ASP.NET Identity table names
+        modelBuilder.Entity<ApplicationUser>().ToTable("Users");
+        modelBuilder.Entity<ApplicationRole>().ToTable("Roles");
+        modelBuilder.Entity<IdentityUserClaim<string>>().ToTable("UserClaims");
+        modelBuilder.Entity<IdentityUserLogin<string>>().ToTable("UserLogins");
+        modelBuilder.Entity<IdentityUserRole<string>>().ToTable("UserRoles");
+        modelBuilder.Entity<IdentityUserToken<string>>().ToTable("UserTokens");
+        modelBuilder.Entity<IdentityRoleClaim<string>>().ToTable("RoleClaims");
+        
+        // Configure domain entities
         modelBuilder.Entity<Product>().HasKey(p => p.Id);
         modelBuilder.Entity<Order>().HasKey(o => o.Id);
         modelBuilder.Entity<Order>().HasIndex(o => new { o.Status, o.CreatedAt });
