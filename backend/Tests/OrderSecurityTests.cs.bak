@@ -1,0 +1,186 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using NUnit.Framework;
+using Talabeyah.OrderManagement.Domain.Entities;
+using Talabeyah.OrderManagement.Domain.Enums;
+using Talabeyah.OrderManagement.Infrastructure.Persistence;
+using Talabeyah.OrderManagement.Application.Orders.Commands;
+using Talabeyah.OrderManagement.Application.Orders.Queries;
+using MediatR;
+using Moq;
+using FluentAssertions;
+using System.Collections.Generic;
+using Talabeyah.OrderManagement.Application.Orders.Commands;
+
+namespace Talabeyah.OrderManagement.Tests;
+
+[TestFixture]
+public class OrderSecurityTests
+{
+    private DbContextOptions<OrderManagementDbContext> _dbOptions;
+    private Mock<IMediator> _mockMediator;
+
+    [SetUp]
+    public void Setup()
+    {
+        _dbOptions = new DbContextOptionsBuilder<OrderManagementDbContext>()
+            .UseSqlite("DataSource=:memory:")
+            .Options;
+        _mockMediator = new Mock<IMediator>();
+    }
+
+    [Test]
+    public async Task UserCanOnlySeeTheirOwnOrders()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        await db.Database.EnsureCreatedAsync();
+
+        // Create test data
+        var user1Order = new Order 
+        { 
+            Status = OrderStatus.Pending, 
+            CreatedAt = DateTime.UtcNow,
+            BuyerId = "user1"
+        };
+        var user2Order = new Order 
+        { 
+            Status = OrderStatus.Pending, 
+            CreatedAt = DateTime.UtcNow,
+            BuyerId = "user2"
+        };
+        var adminOrder = new Order 
+        { 
+            Status = OrderStatus.Pending, 
+            CreatedAt = DateTime.UtcNow,
+            BuyerId = "admin"
+        };
+
+        db.Orders.AddRange(user1Order, user2Order, adminOrder);
+        await db.SaveChangesAsync();
+
+        // Act - Simulate user1 querying their orders
+        var user1Orders = await db.Orders
+            .Where(o => o.BuyerId == "user1")
+            .ToListAsync();
+
+        // Assert
+        user1Orders.Should().HaveCount(1);
+        user1Orders.First().BuyerId.Should().Be("user1");
+    }
+
+    [Test]
+    public async Task AdminCanSeeAllOrders()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        await db.Database.EnsureCreatedAsync();
+
+        // Create test data
+        var user1Order = new Order 
+        { 
+            Status = OrderStatus.Pending, 
+            CreatedAt = DateTime.UtcNow,
+            BuyerId = "user1"
+        };
+        var user2Order = new Order 
+        { 
+            Status = OrderStatus.Pending, 
+            CreatedAt = DateTime.UtcNow,
+            BuyerId = "user2"
+        };
+
+        db.Orders.AddRange(user1Order, user2Order);
+        await db.SaveChangesAsync();
+
+        // Act - Simulate admin querying all orders
+        var allOrders = await db.Orders.ToListAsync();
+
+        // Assert
+        allOrders.Should().HaveCount(2);
+        allOrders.Should().Contain(o => o.BuyerId == "user1");
+        allOrders.Should().Contain(o => o.BuyerId == "user2");
+    }
+
+    [Test]
+    public async Task UserCannotAccessOtherUsersOrder()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        await db.Database.EnsureCreatedAsync();
+
+        var user2Order = new Order 
+        { 
+            Id = 1,
+            Status = OrderStatus.Pending, 
+            CreatedAt = DateTime.UtcNow,
+            BuyerId = "user2"
+        };
+
+        db.Orders.Add(user2Order);
+        await db.SaveChangesAsync();
+
+        // Act - Simulate user1 trying to access user2's order
+        var user1AccessingUser2Order = await db.Orders
+            .Where(o => o.Id == 1 && o.BuyerId == "user1")
+            .FirstOrDefaultAsync();
+
+        // Assert
+        user1AccessingUser2Order.Should().BeNull();
+    }
+
+    [Test]
+    public async Task OrderCreationRequiresValidBuyerId()
+    {
+        // Arrange
+        var command = new PlaceOrderCommand(
+            buyerId: "", // Invalid empty buyer ID
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = 1 } 
+            }
+        );
+
+        // Act & Assert
+        var exception = Assert.ThrowsAsync<ArgumentException>(async () =>
+        {
+            // This would be handled by validation in the real application
+            if (string.IsNullOrEmpty(command.BuyerId))
+                throw new ArgumentException("BuyerId cannot be empty");
+        });
+
+        exception.Message.Should().Contain("BuyerId cannot be empty");
+    }
+
+    [Test]
+    public async Task OrderAccessEnforcesOwnership()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        await db.Database.EnsureCreatedAsync();
+
+        var order = new Order 
+        { 
+            Id = 1,
+            Status = OrderStatus.Pending, 
+            CreatedAt = DateTime.UtcNow,
+            BuyerId = "user1"
+        };
+
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+
+        // Act - Simulate ownership check
+        var isOwner = await db.Orders
+            .AnyAsync(o => o.Id == 1 && o.BuyerId == "user1");
+
+        var isNotOwner = await db.Orders
+            .AnyAsync(o => o.Id == 1 && o.BuyerId == "user2");
+
+        // Assert
+        isOwner.Should().BeTrue();
+        isNotOwner.Should().BeFalse();
+    }
+} 

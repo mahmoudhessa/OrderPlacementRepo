@@ -1,0 +1,149 @@
+using System;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Memory;
+using NUnit.Framework;
+using Talabeyah.OrderManagement.API;
+
+namespace Talabeyah.OrderManagement.Tests;
+
+[TestFixture]
+public class IdempotencyMiddlewareTests
+{
+    private IdempotencyMiddleware _middleware;
+    private MemoryCache _cache;
+    private RequestDelegate _next;
+
+    [SetUp]
+    public void Setup()
+    {
+        _cache = new MemoryCache(new MemoryCacheOptions());
+        _middleware = new IdempotencyMiddleware(_next, _cache);
+        _next = async (context) =>
+        {
+            context.Response.StatusCode = 200;
+            await context.Response.WriteAsync("{\"success\": true}");
+        };
+    }
+
+    [Test]
+    public async Task ReturnsCachedResponse_WhenSameIdempotencyKeyIsUsed()
+    {
+        // Arrange
+        var context = CreateHttpContext("POST", "test-key", "{\"data\": \"test\"}");
+        
+        // First request
+        await _middleware.InvokeAsync(context);
+        var firstResponse = await GetResponseBody(context.Response);
+        
+        // Second request with same key
+        var context2 = CreateHttpContext("POST", "test-key", "{\"data\": \"test\"}");
+        await _middleware.InvokeAsync(context2);
+        var secondResponse = await GetResponseBody(context2.Response);
+
+        // Assert
+        Assert.That(context2.Response.StatusCode, Is.EqualTo(200));
+        Assert.That(secondResponse, Is.EqualTo(firstResponse));
+    }
+
+    [Test]
+    public async Task Returns409Conflict_WhenSameKeyWithDifferentBody()
+    {
+        // Arrange
+        var context1 = CreateHttpContext("POST", "test-key", "{\"data\": \"test1\"}");
+        await _middleware.InvokeAsync(context1);
+        
+        var context2 = CreateHttpContext("POST", "test-key", "{\"data\": \"test2\"}");
+        await _middleware.InvokeAsync(context2);
+
+        // Assert
+        Assert.That(context2.Response.StatusCode, Is.EqualTo(409));
+        var responseBody = await GetResponseBody(context2.Response);
+        Assert.That(responseBody, Does.Contain("Idempotency-Key already used with different request body"));
+    }
+
+    [Test]
+    public async Task PassesThrough_WhenNoIdempotencyKey()
+    {
+        // Arrange
+        var context = CreateHttpContext("POST", null, "{\"data\": \"test\"}");
+        
+        // Act
+        await _middleware.InvokeAsync(context);
+
+        // Assert
+        Assert.That(context.Response.StatusCode, Is.EqualTo(200));
+    }
+
+    [Test]
+    public async Task PassesThrough_WhenNotPostRequest()
+    {
+        // Arrange
+        var context = CreateHttpContext("GET", "test-key", "{\"data\": \"test\"}");
+        
+        // Act
+        await _middleware.InvokeAsync(context);
+
+        // Assert
+        Assert.That(context.Response.StatusCode, Is.EqualTo(200));
+    }
+
+    [Test]
+    public async Task CachesResponse_WhenSuccessfulRequest()
+    {
+        // Arrange
+        var context = CreateHttpContext("POST", "test-key", "{\"data\": \"test\"}");
+        
+        // Act
+        await _middleware.InvokeAsync(context);
+
+        // Assert
+        var cacheKey = "test-key";
+        Assert.That(_cache.TryGetValue(cacheKey, out _), Is.True);
+    }
+
+    [Test]
+    public async Task DoesNotCacheResponse_WhenRequestFails()
+    {
+        // Arrange
+        _next = async (context) =>
+        {
+            context.Response.StatusCode = 400;
+            await context.Response.WriteAsync("{\"error\": \"bad request\"}");
+        };
+        _middleware = new IdempotencyMiddleware(_next, _cache);
+        
+        var context = CreateHttpContext("POST", "test-key", "{\"data\": \"test\"}");
+        
+        // Act
+        await _middleware.InvokeAsync(context);
+
+        // Assert
+        var cacheKey = "test-key";
+        Assert.That(_cache.TryGetValue(cacheKey, out _), Is.False);
+    }
+
+    private HttpContext CreateHttpContext(string method, string? idempotencyKey, string body)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Method = method;
+        context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+        
+        if (!string.IsNullOrEmpty(idempotencyKey))
+        {
+            context.Request.Headers["Idempotency-Key"] = idempotencyKey;
+        }
+        
+        context.Response.Body = new MemoryStream();
+        return context;
+    }
+
+    private async Task<string> GetResponseBody(HttpResponse response)
+    {
+        response.Body.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(response.Body);
+        return await reader.ReadToEndAsync();
+    }
+} 

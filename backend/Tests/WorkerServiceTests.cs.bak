@@ -1,0 +1,237 @@
+using System;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using NUnit.Framework;
+using Talabeyah.OrderManagement.Domain.Entities;
+using Talabeyah.OrderManagement.Domain.Enums;
+using Talabeyah.OrderManagement.Infrastructure.Persistence;
+using Talabeyah.OrderManagement.Worker.Services;
+using Confluent.Kafka;
+using Moq;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Talabeyah.OrderManagement.Tests;
+
+[TestFixture]
+public class WorkerServiceTests
+{
+    private DbContextOptions<OrderManagementDbContext> _dbOptions;
+    private Mock<ILogger<KafkaAuditConsumer>> _mockLogger;
+    private Mock<IConsumer<string, string>> _mockConsumer;
+
+    [SetUp]
+    public void Setup()
+    {
+        _dbOptions = new DbContextOptionsBuilder<OrderManagementDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _mockLogger = new Mock<ILogger<KafkaAuditConsumer>>();
+        _mockConsumer = new Mock<IConsumer<string, string>>();
+    }
+
+    [Test]
+    public async Task KafkaAuditConsumer_ProcessesValidAuditMessage()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        var consumer = new KafkaAuditConsumer(_mockConsumer.Object, db, _mockLogger.Object);
+        
+        var message = new ConsumeResult<string, string>
+        {
+            Message = new Message<string, string>
+            {
+                Key = "test-key",
+                Value = "{\"OrderId\": 1, \"Event\": \"OrderCreated\", \"Timestamp\": \"2024-01-01T00:00:00Z\"}"
+            }
+        };
+
+        // Act
+        await consumer.ProcessMessageAsync(message);
+
+        // Assert
+        var auditLog = await db.AuditLogs.FirstOrDefaultAsync();
+        Assert.That(auditLog, Is.Not.Null);
+        Assert.That(auditLog.OrderId, Is.EqualTo(1));
+        Assert.That(auditLog.Event, Is.EqualTo("OrderCreated"));
+    }
+
+    [Test]
+    public async Task KafkaAuditConsumer_HandlesInvalidJsonMessage()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        var consumer = new KafkaAuditConsumer(_mockConsumer.Object, db, _mockLogger.Object);
+        
+        var message = new ConsumeResult<string, string>
+        {
+            Message = new Message<string, string>
+            {
+                Key = "test-key",
+                Value = "invalid json"
+            }
+        };
+
+        // Act & Assert - Should not throw exception
+        Assert.DoesNotThrowAsync(async () => await consumer.ProcessMessageAsync(message));
+    }
+
+    [Test]
+    public async Task OrderAutoCancelService_CancelsExpiredOrders()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        
+        // Create an expired order (older than 30 minutes)
+        var expiredOrder = new Order
+        {
+            Id = 1,
+            BuyerId = "user123",
+            Status = OrderStatus.Pending,
+            CreatedAt = DateTime.UtcNow.AddMinutes(-31), // 31 minutes ago
+            Items = new List<OrderItem>
+            {
+                new OrderItem { ProductId = 1, Quantity = 2 }
+            }
+        };
+        
+        var product = new Product(1, "Test Product", 0) { Id = 1 };
+        
+        db.Orders.Add(expiredOrder);
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+
+        var service = new OrderAutoCancelService(db, _mockLogger.Object);
+
+        // Act
+        await service.CancelExpiredOrdersAsync();
+
+        // Assert
+        var updatedOrder = await db.Orders.FindAsync(1);
+        Assert.That(updatedOrder.Status, Is.EqualTo(OrderStatus.Cancelled));
+        
+        var updatedProduct = await db.Products.FindAsync(1);
+        Assert.That(updatedProduct.Inventory, Is.EqualTo(2)); // Inventory restored
+    }
+
+    [Test]
+    public async Task OrderAutoCancelService_DoesNotCancelRecentOrders()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        
+        // Create a recent order (less than 30 minutes ago)
+        var recentOrder = new Order
+        {
+            Id = 1,
+            BuyerId = "user123",
+            Status = OrderStatus.Pending,
+            CreatedAt = DateTime.UtcNow.AddMinutes(-15), // 15 minutes ago
+            Items = new List<OrderItem>
+            {
+                new OrderItem { ProductId = 1, Quantity = 2 }
+            }
+        };
+        
+        var product = new Product(1, "Test Product", 0) { Id = 1 };
+        
+        db.Orders.Add(recentOrder);
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+
+        var service = new OrderAutoCancelService(db, _mockLogger.Object);
+
+        // Act
+        await service.CancelExpiredOrdersAsync();
+
+        // Assert
+        var updatedOrder = await db.Orders.FindAsync(1);
+        Assert.That(updatedOrder.Status, Is.EqualTo(OrderStatus.Pending)); // Still pending
+        
+        var updatedProduct = await db.Products.FindAsync(1);
+        Assert.That(updatedProduct.Inventory, Is.EqualTo(0)); // Inventory not restored
+    }
+
+    [Test]
+    public async Task OrderAutoCancelService_DoesNotCancelNonPendingOrders()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        
+        // Create a cancelled order that's old
+        var cancelledOrder = new Order
+        {
+            Id = 1,
+            BuyerId = "user123",
+            Status = OrderStatus.Cancelled,
+            CreatedAt = DateTime.UtcNow.AddMinutes(-31), // 31 minutes ago
+            Items = new List<OrderItem>
+            {
+                new OrderItem { ProductId = 1, Quantity = 2 }
+            }
+        };
+        
+        var product = new Product(1, "Test Product", 0) { Id = 1 };
+        
+        db.Orders.Add(cancelledOrder);
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+
+        var service = new OrderAutoCancelService(db, _mockLogger.Object);
+
+        // Act
+        await service.CancelExpiredOrdersAsync();
+
+        // Assert
+        var updatedOrder = await db.Orders.FindAsync(1);
+        Assert.That(updatedOrder.Status, Is.EqualTo(OrderStatus.Cancelled)); // Still cancelled
+        
+        var updatedProduct = await db.Products.FindAsync(1);
+        Assert.That(updatedProduct.Inventory, Is.EqualTo(0)); // Inventory not restored
+    }
+
+    [Test]
+    public async Task OrderAutoCancelService_HandlesMultipleExpiredOrders()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        
+        // Create multiple expired orders
+        var expiredOrder1 = new Order
+        {
+            Id = 1,
+            BuyerId = "user1",
+            Status = OrderStatus.Pending,
+            CreatedAt = DateTime.UtcNow.AddMinutes(-31),
+            Items = new List<OrderItem> { new OrderItem { ProductId = 1, Quantity = 2 } }
+        };
+        
+        var expiredOrder2 = new Order
+        {
+            Id = 2,
+            BuyerId = "user2",
+            Status = OrderStatus.Pending,
+            CreatedAt = DateTime.UtcNow.AddMinutes(-45),
+            Items = new List<OrderItem> { new OrderItem { ProductId = 1, Quantity = 1 } }
+        };
+        
+        var product = new Product(1, "Test Product", 0) { Id = 1 };
+        
+        db.Orders.AddRange(expiredOrder1, expiredOrder2);
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+
+        var service = new OrderAutoCancelService(db, _mockLogger.Object);
+
+        // Act
+        await service.CancelExpiredOrdersAsync();
+
+        // Assert
+        var cancelledOrders = await db.Orders.Where(o => o.Status == OrderStatus.Cancelled).ToListAsync();
+        Assert.That(cancelledOrders.Count, Is.EqualTo(2));
+        
+        var updatedProduct = await db.Products.FindAsync(1);
+        Assert.That(updatedProduct.Inventory, Is.EqualTo(3)); // 2 + 1 = 3 restored
+    }
+} 

@@ -5,17 +5,23 @@ import { OrderService, OrderProduct } from './order.service';
 @Component({
   selector: 'app-order-create',
   template: `
-    <h2>Create Order</h2>
-    <form (ngSubmit)="submit()">
-      <div *ngFor="let p of products">
-        <label>
-          {{ p.name }} (Available: {{ p.inventory }})
-          <input type="number" min="0" [(ngModel)]="quantities[p.id]" name="qty{{p.id}}" />
-        </label>
-      </div>
-      <button type="submit">Place Order</button>
-      <div *ngIf="message">{{ message }}</div>
-    </form>
+    <div class="content">
+      <mat-card class="highlight-card" style="width:100%;max-width:600px;">
+        <h2>Create Order</h2>
+        <form (ngSubmit)="submit()" style="display:flex;flex-direction:column;gap:16px;">
+          <div *ngFor="let p of products" class="card card-small" style="display:flex;align-items:center;justify-content:space-between;">
+            <label style="flex:1;">
+              {{ p.name }} (Available: {{ p.inventory }})
+            </label>
+            <mat-form-field style="width:80px;">
+              <input matInput type="number" min="0" [(ngModel)]="quantities[p.id]" name="qty{{p.id}}" />
+            </mat-form-field>
+          </div>
+          <button mat-raised-button color="primary" type="submit">Place Order</button>
+          <div *ngIf="message" style="color:#1976d2;font-weight:bold;">{{ message }}</div>
+        </form>
+      </mat-card>
+    </div>
   `
 })
 export class OrderCreateComponent implements OnInit {

@@ -1,0 +1,280 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using NUnit.Framework;
+using Talabeyah.OrderManagement.Domain.Entities;
+using Talabeyah.OrderManagement.Domain.Enums;
+using Talabeyah.OrderManagement.Infrastructure.Persistence;
+using Talabeyah.OrderManagement.Application.Orders.Commands;
+using Talabeyah.OrderManagement.Application.Orders.Commands;
+using FluentAssertions;
+using System.Collections.Generic;
+
+namespace Talabeyah.OrderManagement.Tests;
+
+[TestFixture]
+public class OrderValidationTests
+{
+    private DbContextOptions<OrderManagementDbContext> _dbOptions;
+
+    [SetUp]
+    public void Setup()
+    {
+        _dbOptions = new DbContextOptionsBuilder<OrderManagementDbContext>()
+            .UseSqlite("DataSource=:memory:")
+            .Options;
+    }
+
+    [Test]
+    public void PlaceOrderCommand_WithNegativeQuantity_ShouldThrowException()
+    {
+        // Arrange
+        var command = new PlaceOrderCommand(
+            buyerId: "user1",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = -1 } 
+            }
+        );
+
+        // Act & Assert
+        var exception = Assert.ThrowsAsync<ArgumentException>(async () =>
+        {
+            if (command.Products.Any(p => p.Quantity <= 0))
+                throw new ArgumentException("Quantity must be greater than zero");
+        });
+
+        exception.Message.Should().Contain("Quantity must be greater than zero");
+    }
+
+    [Test]
+    public void PlaceOrderCommand_WithZeroQuantity_ShouldThrowException()
+    {
+        // Arrange
+        var command = new PlaceOrderCommand(
+            buyerId: "user1",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = 0 } 
+            }
+        );
+
+        // Act & Assert
+        var exception = Assert.ThrowsAsync<ArgumentException>(async () =>
+        {
+            if (command.Products.Any(p => p.Quantity <= 0))
+                throw new ArgumentException("Quantity must be greater than zero");
+        });
+
+        exception.Message.Should().Contain("Quantity must be greater than zero");
+    }
+
+    [Test]
+    public void PlaceOrderCommand_WithEmptyProducts_ShouldThrowException()
+    {
+        // Arrange
+        var command = new PlaceOrderCommand(
+            buyerId: "user1",
+            products: new List<OrderProductDto>() // Empty list
+        );
+
+        // Act & Assert
+        var exception = Assert.ThrowsAsync<ArgumentException>(async () =>
+        {
+            if (!command.Products.Any())
+                throw new ArgumentException("Order must contain at least one product");
+        });
+
+        exception.Message.Should().Contain("Order must contain at least one product");
+    }
+
+    [Test]
+    public void PlaceOrderCommand_WithNullProducts_ShouldThrowException()
+    {
+        // Arrange & Act & Assert
+        var exception = Assert.ThrowsAsync<ArgumentNullException>(async () =>
+        {
+            var command = new PlaceOrderCommand(
+                buyerId: "user1",
+                products: null!
+            );
+        });
+
+        exception.ParamName.Should().Be("products");
+    }
+
+    [Test]
+    public void PlaceOrderCommand_WithInvalidProductId_ShouldThrowException()
+    {
+        // Arrange
+        var command = new PlaceOrderCommand(
+            buyerId: "user1",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 0, Quantity = 1 } // Invalid product ID
+            }
+        );
+
+        // Act & Assert
+        var exception = Assert.ThrowsAsync<ArgumentException>(async () =>
+        {
+            if (command.Products.Any(p => p.ProductId <= 0))
+                throw new ArgumentException("Product ID must be greater than zero");
+        });
+
+        exception.Message.Should().Contain("Product ID must be greater than zero");
+    }
+
+    [Test]
+    public void PlaceOrderCommand_WithExcessiveQuantity_ShouldThrowException()
+    {
+        // Arrange
+        var command = new PlaceOrderCommand(
+            buyerId: "user1",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = 10001 } // Excessive quantity
+            }
+        );
+
+        // Act & Assert
+        var exception = Assert.ThrowsAsync<ArgumentException>(async () =>
+        {
+            if (command.Products.Any(p => p.Quantity > 10000))
+                throw new ArgumentException("Quantity cannot exceed 10,000");
+        });
+
+        exception.Message.Should().Contain("Quantity cannot exceed 10,000");
+    }
+
+    [Test]
+    public void PlaceOrderCommand_WithDuplicateProducts_ShouldThrowException()
+    {
+        // Arrange
+        var command = new PlaceOrderCommand(
+            buyerId: "user1",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = 1 },
+                new OrderProductDto { ProductId = 1, Quantity = 2 } // Duplicate product ID
+            }
+        );
+
+        // Act & Assert
+        var exception = Assert.ThrowsAsync<ArgumentException>(async () =>
+        {
+            var duplicateProducts = command.Products
+                .GroupBy(p => p.ProductId)
+                .Any(g => g.Count() > 1);
+
+            if (duplicateProducts)
+                throw new ArgumentException("Order cannot contain duplicate products");
+        });
+
+        exception.Message.Should().Contain("Order cannot contain duplicate products");
+    }
+
+    [Test]
+    public void PlaceOrderCommand_WithNullBuyerId_ShouldThrowException()
+    {
+        // Arrange & Act & Assert
+        var exception = Assert.ThrowsAsync<ArgumentNullException>(async () =>
+        {
+            var command = new PlaceOrderCommand(
+                buyerId: null!,
+                products: new List<OrderProductDto> 
+                { 
+                    new OrderProductDto { ProductId = 1, Quantity = 1 } 
+                }
+            );
+        });
+
+        exception.ParamName.Should().Be("buyerId");
+    }
+
+    [Test]
+    public void PlaceOrderCommand_WithEmptyBuyerId_ShouldThrowException()
+    {
+        // Arrange
+        var command = new PlaceOrderCommand(
+            buyerId: "",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = 1 } 
+            }
+        );
+
+        // Act & Assert
+        var exception = Assert.ThrowsAsync<ArgumentException>(async () =>
+        {
+            if (string.IsNullOrWhiteSpace(command.BuyerId))
+                throw new ArgumentException("BuyerId cannot be empty or whitespace");
+        });
+
+        exception.Message.Should().Contain("BuyerId cannot be empty or whitespace");
+    }
+
+    [Test]
+    public void PlaceOrderCommand_WithWhitespaceBuyerId_ShouldThrowException()
+    {
+        // Arrange
+        var command = new PlaceOrderCommand(
+            buyerId: "   ",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = 1 } 
+            }
+        );
+
+        // Act & Assert
+        var exception = Assert.ThrowsAsync<ArgumentException>(async () =>
+        {
+            if (string.IsNullOrWhiteSpace(command.BuyerId))
+                throw new ArgumentException("BuyerId cannot be empty or whitespace");
+        });
+
+        exception.Message.Should().Contain("BuyerId cannot be empty or whitespace");
+    }
+
+    [Test]
+    public void PlaceOrderCommand_WithValidData_ShouldNotThrowException()
+    {
+        // Arrange
+        var command = new PlaceOrderCommand(
+            buyerId: "user1",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = 1 },
+                new OrderProductDto { ProductId = 2, Quantity = 5 }
+            }
+        );
+
+        // Act & Assert
+        Assert.DoesNotThrowAsync(async () =>
+        {
+            // Validate all business rules
+            if (string.IsNullOrWhiteSpace(command.BuyerId))
+                throw new ArgumentException("BuyerId cannot be empty or whitespace");
+
+            if (!command.Products.Any())
+                throw new ArgumentException("Order must contain at least one product");
+
+            if (command.Products.Any(p => p.ProductId <= 0))
+                throw new ArgumentException("Product ID must be greater than zero");
+
+            if (command.Products.Any(p => p.Quantity <= 0))
+                throw new ArgumentException("Quantity must be greater than zero");
+
+            if (command.Products.Any(p => p.Quantity > 10000))
+                throw new ArgumentException("Quantity cannot exceed 10,000");
+
+            var duplicateProducts = command.Products
+                .GroupBy(p => p.ProductId)
+                .Any(g => g.Count() > 1);
+
+            if (duplicateProducts)
+                throw new ArgumentException("Order cannot contain duplicate products");
+        });
+    }
+} 

@@ -1,0 +1,326 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using NUnit.Framework;
+using Talabeyah.OrderManagement.Domain.Entities;
+using Talabeyah.OrderManagement.Domain.Enums;
+using Talabeyah.OrderManagement.Infrastructure.Persistence;
+using Talabeyah.OrderManagement.Domain.Services;
+using Talabeyah.OrderManagement.Application.Orders.Commands;
+using Talabeyah.OrderManagement.Application.Interfaces;
+using Moq;
+using MediatR;
+using System.Collections.Generic;
+
+namespace Talabeyah.OrderManagement.Tests;
+
+[TestFixture]
+public class OrderEdgeCaseTests
+{
+    private DbContextOptions<OrderManagementDbContext> _dbOptions;
+    private OrderDomainService _orderDomainService;
+    private ProductDomainService _productDomainService;
+
+    [SetUp]
+    public void Setup()
+    {
+        _dbOptions = new DbContextOptionsBuilder<OrderManagementDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _orderDomainService = new OrderDomainService();
+        _productDomainService = new ProductDomainService();
+    }
+
+    [Test]
+    public void ThrowsException_WhenOrderExceedsMaxQuantityPerOrder()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        db.Products.Add(new Product(1, "Test Product", 20));
+        db.SaveChanges();
+
+        var command = new PlaceOrderCommand
+        {
+            BuyerId = "user123",
+            Products = new List<OrderItem>
+            {
+                new OrderItem { ProductId = 1, Quantity = 6 }, // 6 items
+                new OrderItem { ProductId = 1, Quantity = 5 }  // 5 items = 11 total (exceeds 10)
+            }
+        };
+
+        // Act & Assert
+        var ex = Assert.ThrowsAsync<Exception>(async () =>
+        {
+            var mockOrderRepo = new Mock<IOrderRepository>();
+            var mockProductRepo = new Mock<IProductRepository>();
+            var mockNotifier = new Mock<IOrderNotifier>();
+            
+            var handler = new PlaceOrderCommandHandler(mockOrderRepo.Object, mockProductRepo.Object, mockNotifier.Object);
+            await handler.Handle(command, CancellationToken.None);
+        });
+        
+        Assert.That(ex.Message, Does.Contain("Cannot order more than 10 items per order"));
+    }
+
+    [Test]
+    public void ThrowsException_WhenProductIsDeleted()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        var product = new Product(1, "Deleted Product", 5) { IsDeleted = true };
+        db.Products.Add(product);
+        db.SaveChanges();
+
+        var command = new PlaceOrderCommand
+        {
+            BuyerId = "user123",
+            Products = new List<OrderItem> { new OrderItem { ProductId = 1, Quantity = 1 } }
+        };
+
+        // Act & Assert
+        var ex = Assert.ThrowsAsync<Exception>(async () =>
+        {
+            var mockOrderRepo = new Mock<IOrderRepository>();
+            var mockProductRepo = new Mock<IProductRepository>();
+            var mockNotifier = new Mock<IOrderNotifier>();
+            
+            mockProductRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(product);
+            
+            var handler = new PlaceOrderCommandHandler(mockOrderRepo.Object, mockProductRepo.Object, mockNotifier.Object);
+            await handler.Handle(command, CancellationToken.None);
+        });
+        
+        Assert.That(ex.Message, Does.Contain("is not available (deleted)"));
+    }
+
+    [Test]
+    public void ThrowsException_WhenProductPromotionHasExpired()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        var product = new Product(1, "Expired Product", 5) 
+        { 
+            PromotionExpiry = DateTime.UtcNow.AddDays(-1) // Expired yesterday
+        };
+        db.Products.Add(product);
+        db.SaveChanges();
+
+        var command = new PlaceOrderCommand
+        {
+            BuyerId = "user123",
+            Products = new List<OrderItem> { new OrderItem { ProductId = 1, Quantity = 1 } }
+        };
+
+        // Act & Assert
+        var ex = Assert.ThrowsAsync<Exception>(async () =>
+        {
+            var mockOrderRepo = new Mock<IOrderRepository>();
+            var mockProductRepo = new Mock<IProductRepository>();
+            var mockNotifier = new Mock<IOrderNotifier>();
+            
+            mockProductRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(product);
+            
+            var handler = new PlaceOrderCommandHandler(mockOrderRepo.Object, mockProductRepo.Object, mockNotifier.Object);
+            await handler.Handle(command, CancellationToken.None);
+        });
+        
+        Assert.That(ex.Message, Does.Contain("promotion has expired"));
+    }
+
+    [Test]
+    public void ThrowsException_WhenInsufficientInventory()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        var product = new Product(1, "Low Stock Product", 2);
+        db.Products.Add(product);
+        db.SaveChanges();
+
+        var command = new PlaceOrderCommand
+        {
+            BuyerId = "user123",
+            Products = new List<OrderItem> { new OrderItem { ProductId = 1, Quantity = 5 } }
+        };
+
+        // Act & Assert
+        var ex = Assert.ThrowsAsync<Exception>(async () =>
+        {
+            var mockOrderRepo = new Mock<IOrderRepository>();
+            var mockProductRepo = new Mock<IProductRepository>();
+            var mockNotifier = new Mock<IOrderNotifier>();
+            
+            mockProductRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(product);
+            
+            var handler = new PlaceOrderCommandHandler(mockOrderRepo.Object, mockProductRepo.Object, mockNotifier.Object);
+            await handler.Handle(command, CancellationToken.None);
+        });
+        
+        Assert.That(ex.Message, Does.Contain("Insufficient inventory"));
+    }
+
+    [Test]
+    public void ThrowsException_WhenProductNotFound()
+    {
+        // Arrange
+        var command = new PlaceOrderCommand
+        {
+            BuyerId = "user123",
+            Products = new List<OrderItem> { new OrderItem { ProductId = 999, Quantity = 1 } }
+        };
+
+        // Act & Assert
+        var ex = Assert.ThrowsAsync<Exception>(async () =>
+        {
+            var mockOrderRepo = new Mock<IOrderRepository>();
+            var mockProductRepo = new Mock<IProductRepository>();
+            var mockNotifier = new Mock<IOrderNotifier>();
+            
+            mockProductRepo.Setup(r => r.GetByIdAsync(999)).ReturnsAsync((Product)null);
+            
+            var handler = new PlaceOrderCommandHandler(mockOrderRepo.Object, mockProductRepo.Object, mockNotifier.Object);
+            await handler.Handle(command, CancellationToken.None);
+        });
+        
+        Assert.That(ex.Message, Does.Contain("not found"));
+    }
+
+    [Test]
+    public void ThrowsException_WhenConcurrencyConflictOccurs()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        var product = new Product(1, "Test Product", 5);
+        db.Products.Add(product);
+        db.SaveChanges();
+
+        var command = new PlaceOrderCommand
+        {
+            BuyerId = "user123",
+            Products = new List<OrderItem> { new OrderItem { ProductId = 1, Quantity = 1 } }
+        };
+
+        // Act & Assert
+        var ex = Assert.ThrowsAsync<Exception>(async () =>
+        {
+            var mockOrderRepo = new Mock<IOrderRepository>();
+            var mockProductRepo = new Mock<IProductRepository>();
+            var mockNotifier = new Mock<IOrderNotifier>();
+            
+            mockProductRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(product);
+            mockOrderRepo.Setup(r => r.AddAsync(It.IsAny<Order>()))
+                .ThrowsAsync(new DbUpdateConcurrencyException("Concurrency conflict"));
+            
+            var handler = new PlaceOrderCommandHandler(mockOrderRepo.Object, mockProductRepo.Object, mockNotifier.Object);
+            await handler.Handle(command, CancellationToken.None);
+        });
+        
+        Assert.That(ex.Message, Does.Contain("concurrency conflict occurred"));
+    }
+
+    [Test]
+    public void OrderNotifierIsCalled_WhenOrderIsSuccessfullyCreated()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        var product = new Product(1, "Test Product", 5);
+        db.Products.Add(product);
+        db.SaveChanges();
+
+        var command = new PlaceOrderCommand
+        {
+            BuyerId = "user123",
+            Products = new List<OrderItem> { new OrderItem { ProductId = 1, Quantity = 1 } }
+        };
+
+        var mockOrderRepo = new Mock<IOrderRepository>();
+        var mockProductRepo = new Mock<IProductRepository>();
+        var mockNotifier = new Mock<IOrderNotifier>();
+        
+        mockProductRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(product);
+        mockOrderRepo.Setup(r => r.AddAsync(It.IsAny<Order>())).Returns(Task.CompletedTask);
+        mockProductRepo.Setup(r => r.UpdateAsync(It.IsAny<Product>())).Returns(Task.CompletedTask);
+
+        // Act
+        var handler = new PlaceOrderCommandHandler(mockOrderRepo.Object, mockProductRepo.Object, mockNotifier.Object);
+        var result = handler.Handle(command, CancellationToken.None).Result;
+
+        // Assert
+        mockNotifier.Verify(n => n.NotifyOrderCreatedAsync(
+            It.IsAny<int>(), 
+            It.IsAny<DateTime>(), 
+            It.IsAny<string>(), 
+            It.IsAny<CancellationToken>()), 
+            Times.Once);
+    }
+
+    [Test]
+    public void InventoryIsDecreased_WhenOrderIsSuccessfullyCreated()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        var product = new Product(1, "Test Product", 10);
+        db.Products.Add(product);
+        db.SaveChanges();
+
+        var command = new PlaceOrderCommand
+        {
+            BuyerId = "user123",
+            Products = new List<OrderItem> { new OrderItem { ProductId = 1, Quantity = 3 } }
+        };
+
+        var mockOrderRepo = new Mock<IOrderRepository>();
+        var mockProductRepo = new Mock<IProductRepository>();
+        var mockNotifier = new Mock<IOrderNotifier>();
+        
+        mockProductRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(product);
+        mockOrderRepo.Setup(r => r.AddAsync(It.IsAny<Order>())).Returns(Task.CompletedTask);
+        mockProductRepo.Setup(r => r.UpdateAsync(It.IsAny<Product>())).Returns(Task.CompletedTask);
+
+        // Act
+        var handler = new PlaceOrderCommandHandler(mockOrderRepo.Object, mockProductRepo.Object, mockNotifier.Object);
+        var result = handler.Handle(command, CancellationToken.None).Result;
+
+        // Assert
+        Assert.That(product.Inventory, Is.EqualTo(7)); // 10 - 3 = 7
+    }
+
+    [Test]
+    public void OrderItemsAreAdded_WhenOrderIsSuccessfullyCreated()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        var product = new Product(1, "Test Product", 5);
+        db.Products.Add(product);
+        db.SaveChanges();
+
+        var command = new PlaceOrderCommand
+        {
+            BuyerId = "user123",
+            Products = new List<OrderItem> 
+            { 
+                new OrderItem { ProductId = 1, Quantity = 2 },
+                new OrderItem { ProductId = 1, Quantity = 1 }
+            }
+        };
+
+        var mockOrderRepo = new Mock<IOrderRepository>();
+        var mockProductRepo = new Mock<IProductRepository>();
+        var mockNotifier = new Mock<IOrderNotifier>();
+        
+        mockProductRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(product);
+        mockOrderRepo.Setup(r => r.AddAsync(It.IsAny<Order>())).Returns(Task.CompletedTask);
+        mockProductRepo.Setup(r => r.UpdateAsync(It.IsAny<Product>())).Returns(Task.CompletedTask);
+
+        // Act
+        var handler = new PlaceOrderCommandHandler(mockOrderRepo.Object, mockProductRepo.Object, mockNotifier.Object);
+        var result = handler.Handle(command, CancellationToken.None).Result;
+
+        // Assert
+        mockOrderRepo.Verify(r => r.AddAsync(It.Is<Order>(o => 
+            o.BuyerId == "user123" && 
+            o.Items.Count == 2)), 
+            Times.Once);
+    }
+} 

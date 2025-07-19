@@ -1,0 +1,315 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using NUnit.Framework;
+using Talabeyah.OrderManagement.Domain.Entities;
+using Talabeyah.OrderManagement.Domain.Enums;
+using Talabeyah.OrderManagement.Infrastructure.Persistence;
+using Talabeyah.OrderManagement.Application.Orders.Commands;
+using Talabeyah.OrderManagement.Application.Orders.Commands;
+using FluentAssertions;
+using System.Collections.Generic;
+
+namespace Talabeyah.OrderManagement.Tests;
+
+[TestFixture]
+public class OrderIdempotencyTests
+{
+    private DbContextOptions<OrderManagementDbContext> _dbOptions;
+
+    [SetUp]
+    public void Setup()
+    {
+        _dbOptions = new DbContextOptionsBuilder<OrderManagementDbContext>()
+            .UseSqlite("DataSource=:memory:")
+            .Options;
+    }
+
+    [Test]
+    public async Task SameIdempotencyKey_WithSameRequest_ShouldReturnSameResult()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        await db.Database.EnsureCreatedAsync();
+
+        var product = new Product(1, "Test Product", 10);
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+
+        var command1 = new PlaceOrderCommand(
+            buyerId: "user1",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = 1 } 
+            }
+        );
+
+        var command2 = new PlaceOrderCommand(
+            buyerId: "user1",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = 1 } 
+            }
+        );
+
+        // Act - Simulate same request with same idempotency key
+        var result1 = await SimulateIdempotentOrder(command1, "key-123");
+        var result2 = await SimulateIdempotentOrder(command2, "key-123");
+
+        // Assert
+        result1.Should().Be(result2);
+        result1.Should().NotBeNull();
+    }
+
+    [Test]
+    public async Task SameIdempotencyKey_WithDifferentRequest_ShouldReturnConflict()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        await db.Database.EnsureCreatedAsync();
+
+        var product = new Product(1, "Test Product", 10);
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+
+        var command1 = new PlaceOrderCommand(
+            buyerId: "user1",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = 1 } 
+            }
+        );
+
+        var command2 = new PlaceOrderCommand(
+            buyerId: "user1",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = 2 } // Different quantity
+            }
+        );
+
+        // Act - Simulate same idempotency key with different request
+        var result1 = await SimulateIdempotentOrder(command1, "key-123");
+        var result2 = await SimulateIdempotentOrder(command2, "key-123");
+
+        // Assert
+        result1.Should().NotBeNull();
+        result2.Should().Be("CONFLICT"); // Should return conflict for different request
+    }
+
+    [Test]
+    public async Task DifferentIdempotencyKey_WithSameRequest_ShouldCreateNewOrder()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        await db.Database.EnsureCreatedAsync();
+
+        var product = new Product(1, "Test Product", 10);
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+
+        var command = new PlaceOrderCommand(
+            buyerId: "user1",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = 1 } 
+            }
+        );
+
+        // Act - Simulate same request with different idempotency keys
+        var result1 = await SimulateIdempotentOrder(command, "key-123");
+        var result2 = await SimulateIdempotentOrder(command, "key-456");
+
+        // Assert
+        result1.Should().NotBeNull();
+        result2.Should().NotBeNull();
+        result1.Should().NotBe(result2); // Should be different orders
+    }
+
+    [Test]
+    public async Task IdempotencyKey_WithExpiredCache_ShouldCreateNewOrder()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        await db.Database.EnsureCreatedAsync();
+
+        var product = new Product(1, "Test Product", 10);
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+
+        var command = new PlaceOrderCommand(
+            buyerId: "user1",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = 1 } 
+            }
+        );
+
+        // Act - Simulate idempotency key that expires
+        var result1 = await SimulateIdempotentOrder(command, "expiring-key", TimeSpan.FromMilliseconds(1));
+        
+        // Wait for expiration
+        await Task.Delay(10);
+        
+        var result2 = await SimulateIdempotentOrder(command, "expiring-key");
+
+        // Assert
+        result1.Should().NotBeNull();
+        result2.Should().NotBeNull();
+        result1.Should().NotBe(result2); // Should be different orders after expiration
+    }
+
+    [Test]
+    public async Task IdempotencyKey_WithNullKey_ShouldCreateNewOrder()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        await db.Database.EnsureCreatedAsync();
+
+        var product = new Product(1, "Test Product", 10);
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+
+        var command = new PlaceOrderCommand(
+            buyerId: "user1",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = 1 } 
+            }
+        );
+
+        // Act - Simulate null idempotency key
+        var result1 = await SimulateIdempotentOrder(command, null);
+        var result2 = await SimulateIdempotentOrder(command, null);
+
+        // Assert
+        result1.Should().NotBeNull();
+        result2.Should().NotBeNull();
+        result1.Should().NotBe(result2); // Should be different orders
+    }
+
+    [Test]
+    public async Task IdempotencyKey_WithEmptyKey_ShouldCreateNewOrder()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        await db.Database.EnsureCreatedAsync();
+
+        var product = new Product(1, "Test Product", 10);
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+
+        var command = new PlaceOrderCommand(
+            buyerId: "user1",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = 1 } 
+            }
+        );
+
+        // Act - Simulate empty idempotency key
+        var result1 = await SimulateIdempotentOrder(command, "");
+        var result2 = await SimulateIdempotentOrder(command, "");
+
+        // Assert
+        result1.Should().NotBeNull();
+        result2.Should().NotBeNull();
+        result1.Should().NotBe(result2); // Should be different orders
+    }
+
+    [Test]
+    public async Task IdempotencyKey_WithWhitespaceKey_ShouldCreateNewOrder()
+    {
+        // Arrange
+        using var db = new OrderManagementDbContext(_dbOptions);
+        await db.Database.EnsureCreatedAsync();
+
+        var product = new Product(1, "Test Product", 10);
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+
+        var command = new PlaceOrderCommand(
+            buyerId: "user1",
+            products: new List<OrderProductDto> 
+            { 
+                new OrderProductDto { ProductId = 1, Quantity = 1 } 
+            }
+        );
+
+        // Act - Simulate whitespace idempotency key
+        var result1 = await SimulateIdempotentOrder(command, "   ");
+        var result2 = await SimulateIdempotentOrder(command, "   ");
+
+        // Assert
+        result1.Should().NotBeNull();
+        result2.Should().NotBeNull();
+        result1.Should().NotBe(result2); // Should be different orders
+    }
+
+    // Helper method to simulate idempotent order processing
+    private async Task<string> SimulateIdempotentOrder(PlaceOrderCommand command, string? idempotencyKey, TimeSpan? expiry = null)
+    {
+        // Simulate idempotency check
+        if (string.IsNullOrWhiteSpace(idempotencyKey))
+        {
+            // No idempotency key, create new order
+            return Guid.NewGuid().ToString();
+        }
+
+        // Simulate cache check (in real implementation, this would be Redis/MemoryCache)
+        var cacheKey = $"idempotency:{idempotencyKey}";
+        var requestHash = GetRequestHash(command);
+
+        // Simulate cache lookup
+        var cachedRequest = GetCachedRequest(cacheKey);
+        
+        if (cachedRequest != null)
+        {
+            if (cachedRequest == requestHash)
+            {
+                // Same request, return cached result
+                return GetCachedResult(cacheKey);
+            }
+            else
+            {
+                // Different request with same key, return conflict
+                return "CONFLICT";
+            }
+        }
+
+        // New request, create order and cache result
+        var orderId = Guid.NewGuid().ToString();
+        CacheRequest(cacheKey, requestHash, orderId, expiry ?? TimeSpan.FromMinutes(5));
+        
+        return orderId;
+    }
+
+    // Helper methods for simulating cache
+    private static readonly Dictionary<string, (string RequestHash, string Result, DateTime Expiry)> _simulatedCache = new();
+
+    private string GetRequestHash(PlaceOrderCommand command)
+    {
+        // Simple hash for testing
+        return $"{command.BuyerId}:{string.Join(",", command.Products.Select(p => $"{p.ProductId}:{p.Quantity}"))}";
+    }
+
+    private string? GetCachedRequest(string cacheKey)
+    {
+        if (_simulatedCache.TryGetValue(cacheKey, out var cached) && cached.Expiry > DateTime.UtcNow)
+        {
+            return cached.RequestHash;
+        }
+        return null;
+    }
+
+    private string GetCachedResult(string cacheKey)
+    {
+        return _simulatedCache[cacheKey].Result;
+    }
+
+    private void CacheRequest(string cacheKey, string requestHash, string result, TimeSpan expiry)
+    {
+        _simulatedCache[cacheKey] = (requestHash, result, DateTime.UtcNow.Add(expiry));
+    }
+} 

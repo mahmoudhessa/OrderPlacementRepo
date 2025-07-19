@@ -1,0 +1,439 @@
+# ==========================================
+# GLOBAL GITIGNORE FOR TALABEYAH ORDER MANAGEMENT
+# ==========================================
+
+# ==========================================
+# ANGULAR FRONTEND
+# ==========================================
+
+# Dependencies
+frontend/node_modules/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.pnpm-debug.log*
+
+# Production builds
+frontend/dist/
+frontend/tmp/
+frontend/out-tsc/
+frontend/bazel-out/
+
+# Angular cache
+frontend/.angular/cache/
+frontend/.sass-cache/
+frontend/connect.lock
+frontend/coverage/
+frontend/libpeerconnection.log
+frontend/testem.log
+frontend/typings/
+
+# Package manager files
+frontend/package-lock.json
+frontend/yarn.lock
+frontend/.pnpm-store/
+
+# ==========================================
+# .NET BACKEND
+# ==========================================
+
+# Build results
+backend/**/bin/
+backend/**/obj/
+backend/**/out/
+backend/**/Debug/
+backend/**/Release/
+backend/**/x64/
+backend/**/x86/
+backend/**/build/
+backend/**/bld/
+
+# Visual Studio files
+backend/**/.vs/
+backend/**/*.user
+backend/**/*.userosscache
+backend/**/*.sln.docstates
+backend/**/*.userprefs
+
+# Build results
+backend/**/[Dd]ebug/
+backend/**/[Dd]ebugPublic/
+backend/**/[Rr]elease/
+backend/**/[Rr]eleases/
+backend/**/x64/
+backend/**/x86/
+backend/**/build/
+backend/**/bld/
+backend/**/[Bb]in/
+backend/**/[Oo]bj/
+
+# MSTest test Results
+backend/**/[Tt]est[Rr]esult*/
+backend/**/[Bb]uild[Ll]og.*
+
+# NUNIT
+backend/**/*.VisualState.xml
+backend/**/TestResult.xml
+backend/**/nunit-*.xml
+
+# .NET Core
+backend/**/project.lock.json
+backend/**/project.fragment.lock.json
+backend/**/artifacts/
+backend/**/**/Properties/launchSettings.json
+
+# StyleCop
+backend/**/StyleCopReport.xml
+
+# Files built by Visual Studio
+backend/**/*_i.c
+backend/**/*_p.c
+backend/**/*_i.h
+backend/**/ipch/
+backend/**/*.aps
+backend/**/*.ncb
+backend/**/*.opendb
+backend/**/*.opensdf
+backend/**/*.sdf
+backend/**/*.cachefile
+backend/**/*.VC.db
+backend/**/*.VC.VC.opendb
+
+# Visual Studio profiler
+backend/**/*.psess
+backend/**/*.vsp
+backend/**/*.vspx
+backend/**/*.sap
+
+# TFS 2012 Local Workspace
+backend/**/$tf/
+
+# Guidance Automation Toolkit
+backend/**/*.gpState
+
+# ReSharper is a .NET coding add-in
+backend/**/_ReSharper*/
+backend/**/*.[Rr]e[Ss]harper
+backend/**/DotSettings.user
+
+# TeamCity is a build add-in
+backend/**/_TeamCity*
+
+# DotCover is a Code Coverage Tool
+backend/**/*.dotCover
+
+# AxoCover is a Code Coverage Tool
+backend/**/.axoCover/*
+backend/**/!.axoCover/settings.json
+
+# Coverlet is a free, cross platform Code Coverage Tool
+backend/**/*.coverage
+backend/**/*.coveragexml
+
+# Visual Studio code coverage results
+backend/**/*.opencover.xml
+
+# NCrunch
+backend/**/_NCrunch_*
+backend/**/.*crunch*.local.xml
+backend/**/nCrunchTemp_*
+
+# MightyMoose
+backend/**/MMApp.config
+backend/**/MMApp.xml
+
+# Web workbench (sass)
+backend/**/.sass-cache/
+
+# Installshield output folder
+backend/**/[Ee]xpress/
+
+# DocProject is a documentation generator add-in
+backend/**/DocProject/buildhelp/
+backend/**/DocProject/Help/*.HxT
+backend/**/DocProject/Help/*.HxC
+backend/**/DocProject/Help/*.hhc
+backend/**/DocProject/Help/*.hhk
+backend/**/DocProject/Help/*.hhp
+backend/**/DocProject/Help/Html2
+backend/**/DocProject/Help/html
+
+# Click-Once directory
+backend/**/publish/
+
+# Publish Web Output
+backend/**/*.[Pp]ublish.xml
+backend/**/*.azurePubxml
+backend/**/*.pubxml
+backend/**/*.publishproj
+
+# Microsoft Azure Web App publish settings. Comment the next line if you want to
+# checkin your Azure Web App publish settings, but sensitive information contained
+# in these files may be visible to others.
+backend/**/*.azurePubxml
+
+# Microsoft Azure Build Output
+backend/**/csx/
+backend/**/*.build.csdef
+
+# Microsoft Azure Emulator
+backend/**/ecf/
+backend/**/rcf/
+
+# Windows Store app package directories and files
+backend/**/AppPackages/
+backend/**/BundleArtifacts/
+backend/**/Package.StoreAssociation.xml
+backend/**/_pkginfo.txt
+backend/**/*.appx
+
+# Visual Studio cache files
+backend/**/# files that may appear in the root of a volume
+backend/**/.DocumentRevisions-V100
+backend/**/.fseventsd
+backend/**/.Spotlight-V100
+backend/**/.TemporaryItems
+backend/**/.Trashes
+backend/**/.VolumeIcon.icns
+backend/**/.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+backend/**/.AppleDB
+backend/**/.AppleDesktop
+backend/**/Network Trash Folder
+backend/**/Temporary Items
+backend/**/.apdisk
+
+# ==========================================
+# DOCKER
+# ==========================================
+
+# Docker volumes and data
+docker-data/
+docker-volumes/
+
+# ==========================================
+# DATABASE
+# ==========================================
+
+# Database files
+*.mdf
+*.ldf
+*.ndf
+
+# ==========================================
+# LOGS
+# ==========================================
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# ==========================================
+# IDE AND EDITOR FILES
+# ==========================================
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Eclipse
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ==========================================
+# OPERATING SYSTEM FILES
+# ==========================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.tmp
+*.temp
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ==========================================
+# ENVIRONMENT AND CONFIGURATION
+# ==========================================
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Configuration files with sensitive data
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Staging.json
+!appsettings.json
+
+# ==========================================
+# TEMPORARY AND CACHE FILES
+# ==========================================
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Cache directories
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+dist/
+build/
+
+# ==========================================
+# TESTING
+# ==========================================
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage
+.grunt
+
+# Bower dependency directory
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons
+build/Release
+
+# Dependency directories
+jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/ 
