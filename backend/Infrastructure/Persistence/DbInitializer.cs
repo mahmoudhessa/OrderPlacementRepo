@@ -50,17 +50,10 @@ public static class DbInitializer
             }
         }
 
-        // Check if database is already seeded
-        if (await context.Users.AnyAsync())
-        {
-            Console.WriteLine("Database already seeded. Skipping seeding process.");
-            return;
-        }
-
         Console.WriteLine("Starting database seeding...");
 
         // Seed Roles
-        var roles = new[] { "Admin", "Sales", "Auditor", "InventoryManager" };
+        var roles = new[] { "Admin", "Sales", "Auditor", "InventoryManager", "Buyer" };
         foreach (var roleName in roles)
         {
             if (!await roleManager.RoleExistsAsync(roleName))
@@ -77,7 +70,8 @@ public static class DbInitializer
             new { Email = "admin@demo.com", Password = "Passw0rd!", Role = "Admin" },
             new { Email = "sales@demo.com", Password = "Passw0rd!", Role = "Sales" },
             new { Email = "auditor@demo.com", Password = "Passw0rd!", Role = "Auditor" },
-            new { Email = "inventory@demo.com", Password = "Passw0rd!", Role = "InventoryManager" }
+            new { Email = "inventory@demo.com", Password = "Passw0rd!", Role = "InventoryManager" },
+            new { Email = "buyer@demo.com", Password = "Passw0rd!", Role = "Buyer" }
         };
 
         foreach (var userInfo in users)
@@ -96,6 +90,20 @@ public static class DbInitializer
                 {
                     await userManager.AddToRoleAsync(user, userInfo.Role);
                     Console.WriteLine($"Created user: {userInfo.Email} with role: {userInfo.Role}");
+                }
+            }
+            else
+            {
+                // Check if user already has the role
+                var userRoles = await userManager.GetRolesAsync(user);
+                if (!userRoles.Contains(userInfo.Role))
+                {
+                    await userManager.AddToRoleAsync(user, userInfo.Role);
+                    Console.WriteLine($"Added role {userInfo.Role} to existing user: {userInfo.Email}");
+                }
+                else
+                {
+                    Console.WriteLine($"User {userInfo.Email} already has role: {userInfo.Role}");
                 }
             }
         }

@@ -11,4 +11,37 @@
     <button mat-raised-button color="primary" type="submit" [disabled]="addProductForm.invalid">Add Product</button>
   </form>
 </div>
-<div *ngIf="error" style="color:#d32f2f;font-weight:bold;text-align:center;margin-bottom:12px;">{{ error }}</div> 
+
+<div *ngIf="error" style="color:#d32f2f;font-weight:bold;text-align:center;margin-bottom:12px;">{{ error }}</div>
+
+<!-- Product List Display -->
+<div class="product-list-container" style="margin: 20px;">
+  <h2 style="margin-bottom: 20px;">Products</h2>
+  
+  <div *ngIf="products.length === 0 && !error" class="loading" style="text-align: center; padding: 20px;">
+    Loading products...
+  </div>
+  
+  <table *ngIf="products.length > 0" mat-table [dataSource]="products" class="product-table" style="width: 100%;">
+    <!-- ID Column -->
+    <ng-container matColumnDef="id">
+      <th mat-header-cell *matHeaderCellDef style="font-weight: bold;">ID</th>
+      <td mat-cell *matCellDef="let product">{{ product.id }}</td>
+    </ng-container>
+
+    <!-- Name Column -->
+    <ng-container matColumnDef="name">
+      <th mat-header-cell *matHeaderCellDef style="font-weight: bold;">Name</th>
+      <td mat-cell *matCellDef="let product">{{ product.name }}</td>
+    </ng-container>
+
+    <!-- Inventory Column -->
+    <ng-container matColumnDef="inventory">
+      <th mat-header-cell *matHeaderCellDef style="font-weight: bold;">Inventory</th>
+      <td mat-cell *matCellDef="let product">{{ product.inventory }}</td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+  </table>
+</div> 

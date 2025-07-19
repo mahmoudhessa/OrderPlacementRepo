@@ -12,6 +12,10 @@ services:
     ports:
       - "1433:1433"
     restart: unless-stopped
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - sqlserver_log:/var/opt/mssql/log
+    user: "0:0"
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
@@ -36,8 +40,6 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
-
-
   # Backend API service
   backend:
     build:
@@ -48,7 +50,7 @@ services:
       - sqlserver
       - kafka
     ports:
-      - "5001:80"
+      - "5001:8080"
     environment:
       - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=OrderManagement;User Id=sa;Password=YourStrongPassword123;TrustServerCertificate=true;
       - JWT__SecretKey=YourSuperSecretKeyHereThatIsAtLeast32CharactersLong
@@ -82,4 +84,8 @@ services:
       - "4200:80"
     depends_on:
       - backend
-    restart: unless-stopped 
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:
+  sqlserver_log: 

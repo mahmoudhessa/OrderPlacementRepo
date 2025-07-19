@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { OrderService } from './order.service';
 import { OrderRealtimeService } from './order-realtime.service';
+import { AuthService } from '../auth/auth.service';
 
 @Component({
   selector: 'app-order-list',
@@ -10,7 +11,12 @@ import { OrderRealtimeService } from './order-realtime.service';
         <h2>Orders</h2>
         <div *ngIf="notification" class="notification">{{ notification }}</div>
         <div *ngIf="error" style="color:#d32f2f;font-weight:bold;text-align:center;margin-bottom:12px;">{{ error }}</div>
-        <table mat-table [dataSource]="orders" class="mat-elevation-z1" style="width:100%;margin-bottom:16px;">
+        
+        <div *ngIf="orders.length === 0 && !error" style="text-align:center;padding:20px;color:#666;">
+          No orders found. Create your first order!
+        </div>
+        
+        <table *ngIf="orders.length > 0" mat-table [dataSource]="orders" class="mat-elevation-z1" style="width:100%;margin-bottom:16px;">
           <ng-container matColumnDef="id">
             <th mat-header-cell *matHeaderCellDef>ID</th>
             <td mat-cell *matCellDef="let o">{{ o.id }}</td>
@@ -25,8 +31,13 @@ import { OrderRealtimeService } from './order-realtime.service';
           </ng-container>
           <tr mat-header-row *matHeaderRowDef="['id', 'status', 'createdAt']"></tr>
           <tr mat-row *matRowDef="let row; columns: ['id', 'status', 'createdAt'];"></tr>
+          <!-- Debug row: show full order object as JSON -->
+          <tr *ngFor="let o of orders">
+            <td colspan="3">{{ o | json }}</td>
+          </tr>
         </table>
-        <div style="display:flex;gap:8px;justify-content:flex-end;">
+        
+        <div *ngIf="orders.length > 0" style="display:flex;gap:8px;justify-content:flex-end;">
           <button mat-stroked-button color="primary" (click)="prev()" [disabled]="page === 1">Prev</button>
           <button mat-stroked-button color="primary" (click)="next()" [disabled]="page * pageSize >= total">Next</button>
         </div>
@@ -62,11 +73,13 @@ export class OrderListComponent implements OnInit {
 
   constructor(
     private orderService: OrderService,
+    private authService: AuthService,
     private orderRealtime: OrderRealtimeService
   ) {}
 
   ngOnInit() {
-    this.load();
+    console.log('OrderListComponent ngOnInit - starting to fetch orders');
+    this.fetchOrders();
     this.orderRealtime.orderCreated$.subscribe(order => {
       this.notification = `New order created! ID: ${order.orderId}`;
       this.load();
@@ -76,10 +89,26 @@ export class OrderListComponent implements OnInit {
 
   load() {
     this.error = '';
-    this.orderService.getOrders(this.page, this.pageSize).subscribe({
+    const buyerId = this.authService.getUserId() || '';
+    if (!buyerId) {
+      this.error = 'User ID not found. Please log in again.';
+      return;
+    }
+    this.orderService.getOrders(buyerId, this.page, this.pageSize).subscribe({
       next: res => {
-        this.orders = res.items || res;
-        this.total = res.total || 0;
+        if (Array.isArray(res)) {
+          this.orders = res;
+          this.total = res.length;
+        } else if (res && Array.isArray(res.orders)) {
+          this.orders = res.orders;
+          this.total = res.totalCount || res.orders.length;
+        } else if (res && Array.isArray(res.items)) {
+          this.orders = res.items;
+          this.total = res.total || res.items.length;
+        } else {
+          this.orders = res || [];
+          this.total = 0;
+        }
       },
       error: err => {
         if (err && err.backendDown) {
@@ -91,6 +120,54 @@ export class OrderListComponent implements OnInit {
     });
   }
 
-  prev() { if (this.page > 1) { this.page--; this.load(); } }
-  next() { if (this.page * this.pageSize < this.total) { this.page++; this.load(); } }
+  fetchOrders() {
+    const isAdmin = this.authService.hasRole('Admin');
+    let buyerId = '';
+    if (!isAdmin) {
+      buyerId = this.authService.getUserId() || '';
+      if (!buyerId) {
+        this.error = 'User ID not found. Please log in again.';
+        console.log('OrderListComponent - No buyerId found');
+        return;
+      }
+    }
+    this.orderService.getOrders(isAdmin ? '' : buyerId, this.page, this.pageSize).subscribe({
+      next: res => {
+        console.log('OrderListComponent - Orders loaded successfully:', res);
+        if (Array.isArray(res)) {
+          this.orders = res;
+          this.total = res.length;
+        } else if (res && Array.isArray(res.orders)) {
+          this.orders = res.orders;
+          this.total = res.totalCount || res.orders.length;
+        } else if (res && Array.isArray(res.items)) {
+          this.orders = res.items;
+          this.total = res.total || res.items.length;
+        } else if (res && Array.isArray(res.data)) {
+          this.orders = res.data;
+          this.total = res.total || res.data.length;
+        } else {
+          this.orders = [];
+          this.total = 0;
+        }
+        this.error = '';
+      },
+      error: err => {
+        console.error('OrderListComponent - Error loading orders:', err);
+        this.error = err?.error || 'Failed to load orders.';
+      }
+    });
+  }
+
+  prev() {
+    if (this.page > 1) {
+      this.page--;
+      this.fetchOrders();
+    }
+  }
+
+  next() {
+    this.page++;
+    this.fetchOrders();
+  }
 } 

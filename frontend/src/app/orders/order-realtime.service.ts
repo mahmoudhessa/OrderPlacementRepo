@@ -10,13 +10,24 @@ export class OrderRealtimeService {
 
   constructor() {
     this.hubConnection = new signalR.HubConnectionBuilder()
-      .withUrl('http://localhost:5000/orderHub')
+      .withUrl('http://localhost:5001/orderHub', {
+        accessTokenFactory: () => {
+          return localStorage.getItem('jwt_token') || '';
+        }
+      })
+      .withAutomaticReconnect()
       .build();
 
     this.hubConnection.on('OrderCreated', (order) => {
       this.orderCreatedSource.next(order);
     });
 
-    this.hubConnection.start();
+    this.hubConnection.start()
+      .then(() => {
+        console.log('SignalR connection established');
+      })
+      .catch(err => {
+        console.error('SignalR connection failed:', err);
+      });
   }
 } 

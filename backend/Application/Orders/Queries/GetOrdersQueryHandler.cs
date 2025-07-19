@@ -1,40 +1,45 @@
 using MediatR;
 using Talabeyah.OrderManagement.Domain.Interfaces;
+using Talabeyah.OrderManagement.Application.Contracts;
 
 namespace Talabeyah.OrderManagement.Application.Orders.Queries;
 
 public class GetOrdersQueryHandler : IRequestHandler<GetOrdersQuery, GetOrdersResult>
 {
-    private readonly IOrderRepository _orderRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IUserContextAccessor _userContextAccessor;
 
-    public GetOrdersQueryHandler(IOrderRepository orderRepository)
+    public GetOrdersQueryHandler(IUnitOfWork unitOfWork, IUserContextAccessor userContextAccessor)
     {
-        _orderRepository = orderRepository;
+        _unitOfWork = unitOfWork;
+        _userContextAccessor = userContextAccessor;
     }
 
     public async Task<GetOrdersResult> Handle(GetOrdersQuery request, CancellationToken cancellationToken)
     {
-        if (request.Roles.Contains("Admin"))
+        var userContext = _userContextAccessor.GetUserContext();
+        if (userContext == null || string.IsNullOrEmpty(userContext.UserId))
+            throw new UnauthorizedAccessException("User context is missing or invalid.");
+
+        bool isAdmin = userContext.Roles.Contains("Admin");
+        string? buyerId = request.BuyerId;
+        if (!isAdmin)
         {
-            List<Domain.Entities.Order> orders;
-            int total;
-            orders = await _orderRepository.GetPagedAsync(request.Page, request.PageSize);
-            total = await _orderRepository.CountAsync();
-            var dtos = orders.Select(o => new OrderListItemDto(o.Id, o.Status.ToString(), o.CreatedAt)).ToList();
-            return new GetOrdersResult(dtos, total);
+            // If not admin, restrict to own orders or specified buyerId if Sales
+            if (userContext.Roles.Contains("Sales") && !string.IsNullOrEmpty(buyerId))
+            {
+                // Sales can view orders for any buyer
+            }
+            else
+            {
+                // Buyers can only view their own orders
+                buyerId = userContext.UserId;
+            }
         }
-        else if (request.Roles.Contains("Buyer") && request.UserId != null)
-        {
-            List<Domain.Entities.Order> orders;
-            int total;
-            orders = await _orderRepository.GetPagedByBuyerAsync(request.UserId, request.Page, request.PageSize);
-            total = await _orderRepository.CountByBuyerAsync(request.UserId);
-            var dtos = orders.Select(o => new OrderListItemDto(o.Id, o.Status.ToString(), o.CreatedAt)).ToList();
-            return new GetOrdersResult(dtos, total);
-        }
-        else
-        {
-            throw new UnauthorizedAccessException("User does not have permission to view these orders.");
-        }
+        // Fetch orders with filtering
+        var orders = await _unitOfWork.OrderRepository.GetOrdersAsync(buyerId, request.Page, request.PageSize);
+        int total = await _unitOfWork.OrderRepository.CountAsync();
+        var dtos = orders.Select(o => new OrderListItemDto(o.Id, o.Status.ToString(), o.CreatedAt)).ToList();
+        return new GetOrdersResult(dtos, total);
     }
 } 

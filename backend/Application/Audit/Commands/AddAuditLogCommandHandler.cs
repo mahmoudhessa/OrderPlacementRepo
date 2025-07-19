@@ -6,17 +6,17 @@ namespace Talabeyah.OrderManagement.Application.Audit.Commands;
 
 public class AddAuditLogCommandHandler : IRequestHandler<AddAuditLogCommand, Unit>
 {
-    private readonly IAuditLogRepository _auditLogRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public AddAuditLogCommandHandler(IAuditLogRepository auditLogRepository)
+    public AddAuditLogCommandHandler(IUnitOfWork unitOfWork)
     {
-        _auditLogRepository = auditLogRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<Unit> Handle(AddAuditLogCommand request, CancellationToken cancellationToken)
     {
         var log = new AuditLog(request.Change);
-        await _auditLogRepository.AddAsync(log);
+        await _unitOfWork.AuditLogRepository.AddAsync(log);
         return Unit.Value;
     }
 } 

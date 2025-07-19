@@ -6,6 +6,7 @@ using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using Talabeyah.OrderManagement.Application.Contracts;
 
 namespace Talabeyah.OrderManagement.API.Controllers;
 
@@ -23,15 +24,12 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] PlaceOrderCommand clientCommand)
+    public async Task<IActionResult> Create([FromBody] PlaceOrderRequest clientCommand)
     {
-        var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
-        var roles = User.Claims.Where(c => c.Type == System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
-        clientCommand.UserId = userId;
-        clientCommand.Roles = roles;
+        var command = new PlaceOrderCommand(clientCommand.BuyerId, clientCommand.Products);
         try
         {
-            var orderId = await _mediator.Send(clientCommand);
+            var orderId = await _mediator.Send(command);
             return Ok(new { orderId });
         }
         catch (UnauthorizedAccessException)
@@ -45,19 +43,13 @@ public class OrdersController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    public async Task<IActionResult> List([FromQuery] string? buyerId = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
-        var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
-        var roles = User.Claims.Where(c => c.Type == System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
-        var query = new GetOrdersQuery(null, page, pageSize) { UserId = userId, Roles = roles };
+        var query = new GetOrdersQuery(buyerId, page, pageSize);
         try
         {
             var orders = await _mediator.Send(query);
             return Ok(orders);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
         }
         catch (Exception ex)
         {

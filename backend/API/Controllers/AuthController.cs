@@ -8,6 +8,8 @@ using System.Security.Claims;
 using System.Text;
 using Talabeyah.OrderManagement.Domain.Entities;
 using MediatR;
+using Talabeyah.OrderManagement.Application.Contracts;
+using Talabeyah.OrderManagement.Application.Users.Commands;
 
 namespace Talabeyah.OrderManagement.API.Controllers;
 
@@ -34,47 +36,17 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var user = await _userManager.FindByEmailAsync(request.Email);
-            if (user == null)
-                return Unauthorized("Invalid credentials");
-            var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
-            if (!result.Succeeded)
-                return Unauthorized("Invalid credentials");
-            var roles = await _userManager.GetRolesAsync(user);
-            var token = GenerateJwtToken(user, roles);
-            return Ok(new { token });
+            var command = new LoginCommand(request.Email, request.Password);
+            var result = await _mediator.Send(command);
+            return Ok(new { token = result.Token });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized("Invalid credentials");
         }
         catch (Exception ex)
         {
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
-    }
-
-    private string GenerateJwtToken(ApplicationUser user, IList<string> roles)
-    {
-        var jwtSettings = _config.GetSection("Jwt");
-        var claims = new List<Claim>
-        {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim(ClaimTypes.Name, user.UserName ?? user.Email ?? "")
-        };
-        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var token = new JwtSecurityToken(
-            issuer: jwtSettings["Issuer"],
-            audience: jwtSettings["Audience"],
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(int.Parse(jwtSettings["ExpireMinutes"])),
-            signingCredentials: creds
-        );
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
-    public class LoginRequest
-    {
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
     }
 } 

@@ -1,34 +1,21 @@
 import { Component, OnInit } from '@angular/core';
 import { ProductService, Product } from './product.service';
-import { MatDialog } from '@angular/material/dialog';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AuthService } from '../auth/auth.service';
 
 @Component({
   selector: 'app-product-list',
-  template: `
-    <div class="content">
-      <mat-card class="highlight-card" style="width:100%;max-width:600px;">
-        <h2>Products</h2>
-        <mat-list>
-          <mat-list-item *ngFor="let p of products">
-            <span>{{ p.name }}</span>
-            <span style="color:#888;margin-left:auto;">(Inventory: {{ p.inventory }})</span>
-          </mat-list-item>
-        </mat-list>
-      </mat-card>
-    </div>
-  `
+  templateUrl: './product-list.component.html',
 })
 export class ProductListComponent implements OnInit {
   products: Product[] = [];
   error: string = '';
   addProductForm: FormGroup;
   showAddProduct = false;
+  displayedColumns: string[] = ['id', 'name', 'inventory'];
 
   constructor(
     private productService: ProductService,
-    private dialog: MatDialog,
     private fb: FormBuilder,
     public authService: AuthService
   ) {
@@ -46,7 +33,10 @@ export class ProductListComponent implements OnInit {
   loadProducts() {
     this.error = '';
     this.productService.getProducts().subscribe({
-      next: products => this.products = products,
+      next: (products: Product[]) => {
+        console.log('Products loaded:', products);
+        this.products = products;
+      },
       error: err => {
         if (err && err.backendDown) {
           this.error = 'Backend is down. Please try again later.';

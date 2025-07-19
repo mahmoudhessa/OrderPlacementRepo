@@ -31,8 +31,12 @@ public class IdempotencyMiddleware
                 return;
             }
 
+            // Enable buffering so we can read the body multiple times
+            context.Request.EnableBuffering();
+            
             var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
-            context.Request.Body.Position = 0;
+            context.Request.Body.Seek(0, SeekOrigin.Begin);
+            
             var cacheKey = key.ToString();
             if (_cache.TryGetValue(cacheKey, out var cached))
             {

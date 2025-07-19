@@ -16,7 +16,8 @@ public class AuditLogsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> List([FromQuery] string? change = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
-        var logs = await _mediator.Send(new GetAuditLogsQuery(change, page, pageSize));
-        return Ok(logs);
+        var query = new GetAuditLogsQuery(change, page, pageSize);
+        var result = await _mediator.Send(query);
+        return Ok(result);
     }
 } 

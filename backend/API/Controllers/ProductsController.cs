@@ -3,12 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Talabeyah.OrderManagement.Application.Products.Queries;
 using Talabeyah.OrderManagement.Application.Products.Commands;
+using Talabeyah.OrderManagement.Application.Contracts;
+using System.Security.Claims;
 
 namespace Talabeyah.OrderManagement.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,InventoryManager")]
+[Authorize(Roles = "Admin,InventoryManager,Buyer")]
 public class ProductsController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -34,12 +36,9 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Add([FromBody] AddProductCommand command)
+    public async Task<IActionResult> Add([FromBody] AddProductRequest request)
     {
-        var userId = User.Identity?.IsAuthenticated == true ? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value : null;
-        var roles = User.Claims.Where(c => c.Type == System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
-        command.UserId = userId;
-        command.Roles = roles;
+        var command = new AddProductCommand(request.Name, request.Inventory);
         try
         {
             var result = await _mediator.Send(command);
@@ -48,6 +47,10 @@ public class ProductsController : ControllerBase
         catch (UnauthorizedAccessException)
         {
             return Forbid();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
         }
     }
 } 

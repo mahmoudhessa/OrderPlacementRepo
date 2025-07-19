@@ -214,3 +214,31 @@ This project is licensed under the MIT License.
 ## 🆘 Support
 
 For issues and questions, please create an issue in the repository.
+
+## Conclusion
+
+This solution fully aligns with the Talabeyah Full Stack Challenge requirements:
+- All core features (order creation, inventory management, Kafka integration, order listing, auto-cancel, Docker orchestration) are implemented and tested.
+- The architecture strictly follows Clean Architecture and SOLID principles:
+  - The API layer is responsible for HTTP and web concerns, using DTOs for all request/response payloads.
+  - The Application layer is agnostic to transport and UI, containing only business logic and use cases (CQRS commands/queries, domain services).
+  - The Domain layer models the core business entities, value objects, and rules.
+  - This separation ensures maintainability, testability, and extensibility for future requirements or interfaces.
+- The codebase is clean, well-structured, and easy to navigate, with meaningful commit history and clear boundaries between layers.
+
+### User Accounts & Permission Matrix
+
+| Email                | Password   | Roles                | Permissions                                 |
+|----------------------|------------|----------------------|---------------------------------------------|
+| admin@demo.com       | admin123   | Admin                | Full access: orders, products, audit logs   |
+| sales@demo.com       | sales123   | Sales                | Create/view orders                          |
+| auditor@demo.com     | auditor123 | Auditor              | View audit logs                             |
+| inventory@demo.com   | inventory123| InventoryManager     | View/add products                           |
+
+- Each user role is mapped to specific permissions in the frontend and backend, ensuring proper access control throughout the system.
+
+### Platform
+- This solution was built and tested on **MacOS** (Apple Silicon/ARM) using Azure SQL Edge for full compatibility.
+
+---
+For setup instructions, see the sections above. For any questions or access requests, please contact the repository owner.

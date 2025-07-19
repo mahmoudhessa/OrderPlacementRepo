@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ProductService, Product } from '../products/product.service';
 import { OrderService, OrderProduct } from './order.service';
+import { AuthService } from '../auth/auth.service';
 
 @Component({
   selector: 'app-order-create',
@@ -31,7 +32,11 @@ export class OrderCreateComponent implements OnInit {
   message = '';
   error: string = '';
 
-  constructor(private productService: ProductService, private orderService: OrderService) {}
+  constructor(
+    private productService: ProductService,
+    private orderService: OrderService,
+    private authService: AuthService
+  ) {}
 
   ngOnInit() {
     this.productService.getProducts().subscribe({
@@ -51,20 +56,24 @@ export class OrderCreateComponent implements OnInit {
   }
 
   submit() {
-    this.message = '';
-    this.error = '';
-    const orderProducts: OrderProduct[] = Object.entries(this.quantities)
+    const buyerId = this.authService.getUserId() || '';
+    if (!buyerId) {
+      this.error = 'User ID not found. Please log in again.';
+      return;
+    }
+    const products = Object.entries(this.quantities)
       .filter(([_, qty]) => qty > 0)
-      .map(([productId, quantity]) => ({ productId: +productId, quantity: +quantity }));
-
-    this.orderService.placeOrder(orderProducts).subscribe({
-      next: res => this.message = 'Order placed successfully!',
+      .map(([id, qty]) => ({ productId: +id, quantity: qty }));
+    // Generate a unique Idempotency-Key (UUID v4)
+    const idempotencyKey = self.crypto?.randomUUID ? self.crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now();
+    this.orderService.placeOrder(buyerId, products, idempotencyKey).subscribe({
+      next: res => {
+        this.message = 'Order placed successfully!';
+        this.error = '';
+      },
       error: err => {
-        if (err && err.backendDown) {
-          this.error = 'Backend is down. Please try again later.';
-        } else {
-          this.error = 'Failed to place order.';
-        }
+        this.error = err?.error || 'Failed to place order.';
+        this.message = '';
       }
     });
   }

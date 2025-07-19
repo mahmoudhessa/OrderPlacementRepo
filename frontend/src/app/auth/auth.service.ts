@@ -36,7 +36,17 @@ export class AuthService {
     if (!token) return false;
     const decoded = this.jwtHelper.decodeToken(token);
     if (!decoded) return false;
-    const roles = Array.isArray(decoded['role']) ? decoded['role'] : [decoded['role']];
+    
+    // Check for both short 'role' and full Microsoft claims role
+    const userRole = decoded['role'] || decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
+    const roles = Array.isArray(userRole) ? userRole : [userRole];
     return roles.includes(role);
+  }
+
+  getUserId(): string | null {
+    const token = this.getToken();
+    if (!token) return null;
+    const decoded = this.jwtHelper.decodeToken(token);
+    return decoded?.sub || decoded?.nameid || decoded?.userId || null;
   }
 } 

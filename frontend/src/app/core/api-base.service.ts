@@ -5,7 +5,7 @@ import { catchError } from 'rxjs/operators';
 
 @Injectable({ providedIn: 'root' })
 export class ApiBaseService {
-  private baseUrls = ['http://localhost:5001', 'http://localhost:5000'];
+  private baseUrls = ['http://localhost:5001', 'http://localhost:5002', 'http://localhost:5000'];
 
   constructor(private http: HttpClient) {}
 

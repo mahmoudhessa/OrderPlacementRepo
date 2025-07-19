@@ -20,33 +20,22 @@ public class OrderRepository : IOrderRepository
             .FirstOrDefaultAsync(o => o.Id == id);
     }
 
-    public async Task<List<Order>> GetPagedAsync(int page, int pageSize)
+    public async Task<List<Order>> GetOrdersAsync(string? buyerId, int page, int pageSize)
     {
-        return await _context.Orders
-            .Include(o => o.Items)
+        var query = _context.Orders.Include(o => o.Items).AsQueryable();
+        if (!string.IsNullOrEmpty(buyerId))
+            query = query.Where(o => o.BuyerId == buyerId);
+        return await query.OrderByDescending(o => o.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
     }
 
-    public async Task<List<Order>> GetPagedByBuyerAsync(string buyerId, int page, int pageSize)
+    public async Task<int> CountAsync(string? buyerId = null)
     {
-        return await _context.Orders
-            .Include(o => o.Items)
-            .Where(o => o.BuyerId == buyerId)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-    }
-
-    public async Task<int> CountAsync()
-    {
+        if (!string.IsNullOrEmpty(buyerId))
+            return await _context.Orders.CountAsync(o => o.BuyerId == buyerId);
         return await _context.Orders.CountAsync();
-    }
-
-    public async Task<int> CountByBuyerAsync(string buyerId)
-    {
-        return await _context.Orders.CountAsync(o => o.BuyerId == buyerId);
     }
 
     public async Task AddAsync(Order order)

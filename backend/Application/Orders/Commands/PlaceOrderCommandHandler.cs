@@ -3,6 +3,7 @@ using Talabeyah.OrderManagement.Domain.Entities;
 using Talabeyah.OrderManagement.Domain.Interfaces;
 using Talabeyah.OrderManagement.Domain.Services;
 using Talabeyah.OrderManagement.Domain.Enums;
+using Talabeyah.OrderManagement.Application.Contracts;
 
 namespace Talabeyah.OrderManagement.Application.Orders.Commands;
 
@@ -12,24 +13,44 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, int>
     private readonly INotificationService _notificationService;
     private readonly OrderDomainService _orderDomainService;
     private readonly ProductDomainService _productDomainService;
+    private readonly IUserContextAccessor _userContextAccessor;
 
     public PlaceOrderCommandHandler(
         IUnitOfWork unitOfWork,
         INotificationService notificationService,
         OrderDomainService orderDomainService,
-        ProductDomainService productDomainService)
+        ProductDomainService productDomainService,
+        IUserContextAccessor userContextAccessor)
     {
         _unitOfWork = unitOfWork;
         _notificationService = notificationService;
         _orderDomainService = orderDomainService;
         _productDomainService = productDomainService;
+        _userContextAccessor = userContextAccessor;
     }
 
     public async Task<int> Handle(PlaceOrderCommand request, CancellationToken cancellationToken)
     {
+        var userContext = _userContextAccessor.GetUserContext();
+        if (userContext == null || string.IsNullOrEmpty(userContext.UserId))
+            throw new UnauthorizedAccessException("User context is missing or invalid.");
+
+        string buyerId;
+        if (userContext.Roles.Contains("Admin") || userContext.Roles.Contains("Sales"))
+        {
+            buyerId = request.BuyerId ?? userContext.UserId;
+        }
+        else if (userContext.Roles.Contains("Buyer"))
+        {
+            buyerId = userContext.UserId;
+        }
+        else
+        {
+            throw new UnauthorizedAccessException("User does not have permission to place orders.");
+        }
+
         // Only Buyer can place orders for themselves
-        if (!(request.Roles.Contains("Buyer") && request.UserId == request.BuyerId))
-            throw new UnauthorizedAccessException("User does not have permission to place this order.");
+        // (If you want to restrict to buyers, check userContext.Roles and userContext.UserId here)
 
         // Business rule: max allowed quantity per order
         if (request.Products.Sum(p => p.Quantity) > 10)
@@ -42,7 +63,7 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, int>
         {
             var order = new Order
             {
-                BuyerId = request.BuyerId,
+                BuyerId = buyerId,
                 Status = OrderStatus.Pending,
                 CreatedAt = DateTime.UtcNow
             };

@@ -1,6 +1,7 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { JwtModule } from '@auth0/angular-jwt';
 import { AppRoutingModule } from './app-routing.module';
@@ -10,6 +11,9 @@ import { ProductListComponent } from './products/product-list.component';
 import { OrderCreateComponent } from './orders/order-create.component';
 import { OrderListComponent } from './orders/order-list.component';
 import { AuditLogListComponent } from './audit-logs/audit-log-list.component';
+import { Injectable } from '@angular/core';
+import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
 // Angular Material imports
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
@@ -23,6 +27,22 @@ import { MatListModule } from '@angular/material/list';
 import { MatTableModule } from '@angular/material/table';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatDialogModule } from '@angular/material/dialog';
+
+@Injectable()
+export class AuthInterceptor implements HttpInterceptor {
+  intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+    const token = localStorage.getItem('jwt_token');
+    if (token) {
+      request = request.clone({
+        setHeaders: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+    }
+    return next.handle(request);
+  }
+}
 
 @NgModule({
   declarations: [
@@ -37,6 +57,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
     BrowserModule,
     BrowserAnimationsModule,
     FormsModule,
+    ReactiveFormsModule,
     HttpClientModule,
     AppRoutingModule,
     MatCardModule,
@@ -49,15 +70,18 @@ import { MatToolbarModule } from '@angular/material/toolbar';
     MatTableModule,
     MatSidenavModule,
     MatToolbarModule,
+    MatDialogModule,
     JwtModule.forRoot({
       config: {
         tokenGetter: () => localStorage.getItem('jwt_token'),
-        allowedDomains: ['localhost:5000'],
+        allowedDomains: ['localhost:5000', 'localhost:5001'],
         disallowedRoutes: []
       }
     })
   ],
-  providers: [],
+  providers: [
+    { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true }
+  ],
   bootstrap: [AppComponent]
 })
 export class AppModule {}

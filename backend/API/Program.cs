@@ -6,6 +6,7 @@ using Talabeyah.OrderManagement.Infrastructure.Persistence;
 using Talabeyah.OrderManagement.Domain.Entities;
 using Microsoft.OpenApi.Models;
 using Microsoft.EntityFrameworkCore;
+using FluentValidation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +20,9 @@ if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
 
 builder.Services.AddControllers();
 
+// Register FluentValidation validators
+builder.Services.AddValidatorsFromAssembly(typeof(Talabeyah.OrderManagement.Application.Orders.Commands.PlaceOrderCommandValidator).Assembly);
+
 // Add SignalR services
 builder.Services.AddSignalR();
 
@@ -29,6 +33,13 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Talab
 // Register services
 builder.Services.AddScoped<Talabeyah.OrderManagement.Domain.Interfaces.INotificationService, Talabeyah.OrderManagement.Infrastructure.Notifications.OrderNotificationService>();
 builder.Services.AddScoped<Talabeyah.OrderManagement.Domain.Interfaces.ISignalRService, Talabeyah.OrderManagement.Infrastructure.Notifications.SignalRService>();
+
+// Register IHubContext for SignalR
+builder.Services.AddScoped<Talabeyah.OrderManagement.Domain.Interfaces.IHubContext>(provider =>
+{
+    var hubContext = provider.GetRequiredService<Microsoft.AspNetCore.SignalR.IHubContext<Talabeyah.OrderManagement.Contracts.OrderHub>>();
+    return new Talabeyah.OrderManagement.Contracts.SignalRHubContextAdapter(hubContext);
+});
 
 // Register domain services
 builder.Services.AddScoped<Talabeyah.OrderManagement.Domain.Services.OrderDomainService>();
@@ -50,6 +61,14 @@ builder.Services.AddScoped<Talabeyah.OrderManagement.Domain.Interfaces.IUnitOfWo
 // Add SignInManager
 builder.Services.AddScoped<SignInManager<ApplicationUser>>();
 
+// Register UserAuthenticator and JwtTokenGenerator
+builder.Services.AddScoped<Talabeyah.OrderManagement.Domain.Interfaces.IUserAuthenticator, Talabeyah.OrderManagement.Infrastructure.Services.UserAuthenticator>();
+builder.Services.AddScoped<Talabeyah.OrderManagement.Application.Users.Commands.IJwtTokenGenerator, Talabeyah.OrderManagement.Infrastructure.Services.JwtTokenGenerator>();
+
+// Add HttpContextAccessor
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<Talabeyah.OrderManagement.Application.Contracts.IUserContextAccessor, Talabeyah.OrderManagement.Infrastructure.Services.UserContextAccessor>();
+
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 builder.Services.AddAuthentication(options =>
@@ -68,6 +87,21 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]))
+    };
+    
+    // Configure JWT for SignalR
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/orderHub"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
     };
 });
 
@@ -104,10 +138,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:4200")
+        policy.AllowAnyOrigin()
               .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+              .AllowAnyMethod();
     });
 });
 
@@ -153,6 +186,7 @@ app.UseHttpsRedirection();
 // Place this BEFORE UseAuthentication and UseAuthorization
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
+app.UseMiddleware<Talabeyah.OrderManagement.API.Middleware.UserContextMiddleware>();
 app.UseAuthorization();
 
 // Register IdempotencyMiddleware before controllers
