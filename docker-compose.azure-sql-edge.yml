@@ -50,7 +50,7 @@ services:
       - sqlserver
       - kafka
     ports:
-      - "5001:8080"
+      - "5001:80"
     environment:
       - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=OrderManagement;User Id=sa;Password=YourStrongPassword123;TrustServerCertificate=true;
       - JWT__SecretKey=YourSuperSecretKeyHereThatIsAtLeast32CharactersLong

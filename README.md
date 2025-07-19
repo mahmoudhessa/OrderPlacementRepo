@@ -230,10 +230,10 @@ This solution fully aligns with the Talabeyah Full Stack Challenge requirements:
 
 | Email                | Password   | Roles                | Permissions                                 |
 |----------------------|------------|----------------------|---------------------------------------------|
-| admin@demo.com       | admin123   | Admin                | Full access: orders, products, audit logs   |
-| sales@demo.com       | sales123   | Sales                | Create/view orders                          |
-| auditor@demo.com     | auditor123 | Auditor              | View audit logs                             |
-| inventory@demo.com   | inventory123| InventoryManager     | View/add products                           |
+| admin@demo.com       | Passw0rd!   | Admin                | Full access: orders, products, audit logs   |
+| buyer@demo.com       | Passw0rd!   | Buyer                | Create/view orders                          |
+                         |
+| inventory@demo.com   | Passw0rd!| InventoryManager     | View/add  products                           |
 
 - Each user role is mapped to specific permissions in the frontend and backend, ensuring proper access control throughout the system.
 

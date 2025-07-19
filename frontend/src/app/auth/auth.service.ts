@@ -49,4 +49,11 @@ export class AuthService {
     const decoded = this.jwtHelper.decodeToken(token);
     return decoded?.sub || decoded?.nameid || decoded?.userId || null;
   }
+
+  getEmail(): string | null {
+    const token = this.getToken();
+    if (!token) return null;
+    const decoded = this.jwtHelper.decodeToken(token);
+    return decoded?.email || null;
+  }
 } 

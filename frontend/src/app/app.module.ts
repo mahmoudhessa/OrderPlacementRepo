@@ -11,6 +11,7 @@ import { ProductListComponent } from './products/product-list.component';
 import { OrderCreateComponent } from './orders/order-create.component';
 import { OrderListComponent } from './orders/order-list.component';
 import { AuditLogListComponent } from './audit-logs/audit-log-list.component';
+import { GreetingComponent } from './greeting/greeting.component';
 import { Injectable } from '@angular/core';
 import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -51,7 +52,8 @@ export class AuthInterceptor implements HttpInterceptor {
     ProductListComponent,
     OrderCreateComponent,
     OrderListComponent,
-    AuditLogListComponent
+    AuditLogListComponent,
+    GreetingComponent
   ],
   imports: [
     BrowserModule,

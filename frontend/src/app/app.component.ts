@@ -17,7 +17,7 @@ export class AppComponent {
   get userEmail(): string | null {
     // For now, return a placeholder since we don't store user email in localStorage
     // In a real app, you'd decode the JWT token or store user info separately
-    return this.authService.isLoggedIn() ? 'user@example.com' : null;
+    return this.authService.isLoggedIn() ? this.authService.getEmail() : null;
   }
 
   hasRole(role: string): boolean {
