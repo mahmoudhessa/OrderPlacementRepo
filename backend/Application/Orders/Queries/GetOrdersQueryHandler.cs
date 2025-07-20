@@ -25,16 +25,9 @@ public class GetOrdersQueryHandler : IRequestHandler<GetOrdersQuery, GetOrdersRe
         string? buyerId = request.BuyerId;
         if (!isAdmin)
         {
-            // If not admin, restrict to own orders or specified buyerId if Sales
-            if (userContext.Roles.Contains("Sales") && !string.IsNullOrEmpty(buyerId))
-            {
-                // Sales can view orders for any buyer
-            }
-            else
-            {
+
                 // Buyers can only view their own orders
                 buyerId = userContext.UserId;
-            }
         }
         // Fetch orders with filtering
         var orders = await _unitOfWork.OrderRepository.GetOrdersAsync(buyerId, request.Page, request.PageSize);

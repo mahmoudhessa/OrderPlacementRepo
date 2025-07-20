@@ -30,7 +30,7 @@ public class AddProductCommandHandler : IRequestHandler<AddProductCommand, int>
             _logger.LogInformation("AddProductCommand - Roles: {Roles}", string.Join(", ", userContext.Roles));
         }
         
-        if (userContext == null || !(userContext.Roles.Contains("Admin") || !userContext.Roles.Contains("InventoryManager")))
+        if (userContext == null || !(userContext.Roles.Contains("Admin") || userContext.Roles.Contains("InventoryManager")))
         {
             _logger.LogWarning("AddProductCommand - Authorization failed. User: {UserId}, Roles: {Roles}", 
                 userContext?.UserId, userContext?.Roles != null ? string.Join(", ", userContext.Roles) : "null");

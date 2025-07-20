@@ -12,7 +12,7 @@ namespace Talabeyah.OrderManagement.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles = "Admin,Buyer")]
 public class OrdersController : ControllerBase
 {
     private readonly IMediator _mediator;

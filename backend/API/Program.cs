@@ -138,9 +138,26 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy.WithOrigins(
+                "http://localhost:4200",     // Frontend development
+                "http://localhost:80",       // Frontend container
+                "http://localhost"           // Frontend container alternative
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials()
+            .WithExposedHeaders("X-Pagination", "X-Total-Count");
+    });
+    
+    options.AddPolicy("AllowSwagger", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:5001",     // Backend Swagger UI
+                "https://localhost:5001"     // Backend Swagger UI HTTPS
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
     });
 });
 
@@ -183,8 +200,50 @@ app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
+// Add security headers
+app.Use(async (context, next) =>
+{
+    // Security Headers
+    context.Response.Headers.Add("X-Frame-Options", "SAMEORIGIN");
+    context.Response.Headers.Add("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Add("X-XSS-Protection", "1; mode=block");
+    context.Response.Headers.Add("Referrer-Policy", "strict-origin-when-cross-origin");
+    context.Response.Headers.Add("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+    
+    // Content Security Policy for API
+    context.Response.Headers.Add("Content-Security-Policy", 
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'self'; base-uri 'self';");
+    
+    await next();
+});
+
 // Place this BEFORE UseAuthentication and UseAuthorization
-app.UseCors("AllowFrontend");
+app.UseCors(policy =>
+{
+    policy.SetIsOriginAllowed(origin =>
+    {
+        // Allow frontend origins
+        if (origin.StartsWith("http://localhost:4200") || 
+            origin.StartsWith("http://localhost:80") || 
+            origin.StartsWith("http://localhost"))
+        {
+            return true;
+        }
+        
+        // Allow Swagger UI
+        if (origin.StartsWith("http://localhost:5001") || 
+            origin.StartsWith("https://localhost:5001"))
+        {
+            return true;
+        }
+        
+        return false;
+    })
+    .AllowAnyMethod()
+    .AllowAnyHeader()
+    .AllowCredentials()
+    .WithExposedHeaders("X-Pagination", "X-Total-Count");
+});
 app.UseAuthentication();
 app.UseMiddleware<Talabeyah.OrderManagement.API.Middleware.UserContextMiddleware>();
 app.UseAuthorization();

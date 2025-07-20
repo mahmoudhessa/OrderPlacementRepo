@@ -51,8 +51,8 @@ public class OrderNotifier : INotificationService
                 message = $"New order #{orderId} created with status: {status}"
             };
 
-            // Notify all users with Sales and Admin roles
-            await _signalRService.SendToGroupsAsync(new[] { "Sales", "Admin" }, "OrderCreated", signalRMessage, cancellationToken);
+            // Notify all users with Admin roles
+            await _signalRService.SendToGroupsAsync(new[] { "Admin" }, "OrderCreated", signalRMessage, cancellationToken);
             _logger.LogInformation("Order created notification sent via SignalR: OrderId={OrderId}", orderId);
         }
         catch (Exception ex)
@@ -78,7 +78,7 @@ public class OrderNotifier : INotificationService
             };
 
             // Notify specific order group and role-based groups
-            await _signalRService.SendToGroupsAsync(new[] { $"Order_{orderId}", "Sales", "Admin" }, "OrderStatusChanged", message, cancellationToken);
+            await _signalRService.SendToGroupsAsync(new[] { $"Order_{orderId}", "Admin" }, "OrderStatusChanged", message, cancellationToken);
             _logger.LogInformation("Order status change notification sent: OrderId={OrderId}, Status: {OldStatus} -> {NewStatus}", orderId, oldStatus, newStatus);
         }
         catch (Exception ex)
@@ -157,7 +157,7 @@ public class OrderNotifier : INotificationService
             };
 
             // Notify all relevant groups
-            await _signalRService.SendToGroupsAsync(new[] { $"Order_{orderId}", "Sales", "Admin" }, "OrderCancelled", message, cancellationToken);
+            await _signalRService.SendToGroupsAsync(new[] { $"Order_{orderId}", "Admin" }, "OrderCancelled", message, cancellationToken);
             _logger.LogInformation("Order cancelled notification sent: OrderId={OrderId}, Reason={Reason}", orderId, reason);
         }
         catch (Exception ex)
@@ -204,8 +204,8 @@ public class OrderNotifier : INotificationService
                 message = $"Concurrency conflict detected for order #{orderId}: {conflictType}"
             };
 
-            // Notify admins and sales about concurrency conflicts
-            await _signalRService.SendToGroupsAsync(new[] { "Admin", "Sales" }, "ConcurrencyConflict", message, cancellationToken);
+            // Notify admins  about concurrency conflicts
+            await _signalRService.SendToGroupsAsync(new[] { "Admin" }, "ConcurrencyConflict", message, cancellationToken);
             _logger.LogInformation("Concurrency conflict notification sent: OrderId={OrderId}, Type={ConflictType}", orderId, conflictType);
         }
         catch (Exception ex)

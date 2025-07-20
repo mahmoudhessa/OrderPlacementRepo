@@ -18,6 +18,16 @@
 <div class="product-list-container" style="margin: 20px;">
   <h2 style="margin-bottom: 20px;">Products</h2>
   
+  <!-- Search Section -->
+  <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
+    <mat-form-field appearance="outline" style="min-width: 200px;">
+      <mat-label>Search by name</mat-label>
+      <input matInput [(ngModel)]="searchName" placeholder="Enter product name..." />
+    </mat-form-field>
+    <button mat-raised-button color="primary" (click)="onSearch()">Search</button>
+    <button mat-stroked-button (click)="clearSearch()">Clear</button>
+  </div>
+  
   <div *ngIf="products.length === 0 && !error" class="loading" style="text-align: center; padding: 20px;">
     Loading products...
   </div>
@@ -44,4 +54,13 @@
     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
     <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
   </table>
+  
+  <!-- Pagination Controls -->
+  <div *ngIf="products.length > 0" style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+    <button mat-stroked-button color="primary" (click)="prev()" [disabled]="page === 1">Prev</button>
+    <span style="display: flex; align-items: center; margin: 0 16px;">
+      Page {{ page }}
+    </span>
+    <button mat-stroked-button color="primary" (click)="next()" [disabled]="products.length < pageSize">Next</button>
+  </div>
 </div> 

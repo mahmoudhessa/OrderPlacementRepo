@@ -52,7 +52,7 @@ npm install
 
 #### For Mac (Azure SQL Edge):
 ```bash
-docker-compose -f docker-compose.azure-sql-edge.yml up --build -d
+docker compose -f docker-compose.azure-sql-edge.yml up --build -d
 ```
 
 #### For Windows (MS SQL Server):

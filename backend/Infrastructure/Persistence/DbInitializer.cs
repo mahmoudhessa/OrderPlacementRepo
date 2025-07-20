@@ -53,7 +53,7 @@ public static class DbInitializer
         Console.WriteLine("Starting database seeding...");
 
         // Seed Roles
-        var roles = new[] { "Admin", "Sales", "Auditor", "InventoryManager", "Buyer" };
+        var roles = new[] { "Admin", "InventoryManager", "Buyer" };
         foreach (var roleName in roles)
         {
             if (!await roleManager.RoleExistsAsync(roleName))
@@ -68,8 +68,6 @@ public static class DbInitializer
         var users = new[]
         {
             new { Email = "admin@demo.com", Password = "Passw0rd!", Role = "Admin" },
-            new { Email = "sales@demo.com", Password = "Passw0rd!", Role = "Sales" },
-            new { Email = "auditor@demo.com", Password = "Passw0rd!", Role = "Auditor" },
             new { Email = "inventory@demo.com", Password = "Passw0rd!", Role = "InventoryManager" },
             new { Email = "buyer@demo.com", Password = "Passw0rd!", Role = "Buyer" }
         };
@@ -132,10 +130,10 @@ public static class DbInitializer
 
         // Seed Sample Orders
         var adminUser = await userManager.FindByEmailAsync("admin@demo.com");
-        var salesUser = await userManager.FindByEmailAsync("sales@demo.com");
+        var buyerUser = await userManager.FindByEmailAsync("buyer@demo.com");
         var seededProducts = await context.Products.Take(3).ToListAsync();
 
-        if (adminUser != null && salesUser != null && seededProducts.Any())
+        if (adminUser != null && buyerUser != null && seededProducts.Any())
         {
             var order1 = new Order
             {
@@ -151,7 +149,7 @@ public static class DbInitializer
 
             var order2 = new Order
             {
-                BuyerId = salesUser.Id,
+                BuyerId = buyerUser.Id,
                 Status = OrderStatus.Pending,
                 CreatedAt = DateTime.UtcNow.AddMinutes(-45),
                 Items = new List<OrderItem>

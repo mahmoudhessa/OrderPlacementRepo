@@ -36,7 +36,7 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, int>
             throw new UnauthorizedAccessException("User context is missing or invalid.");
 
         string buyerId;
-        if (userContext.Roles.Contains("Admin") || userContext.Roles.Contains("Sales"))
+        if (userContext.Roles.Contains("Admin"))
         {
             buyerId = request.BuyerId ?? userContext.UserId;
         }

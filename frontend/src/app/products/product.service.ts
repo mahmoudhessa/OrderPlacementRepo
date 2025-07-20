@@ -12,8 +12,12 @@ export interface Product {
 export class ProductService {
   constructor(private api: ApiBaseService) {}
 
-  getProducts(): Observable<Product[]> {
-    return this.api.get<Product[]>('/api/products');
+  getProducts(name?: string, page: number = 1, pageSize: number = 10): Observable<Product[]> {
+    let url = `/api/products?page=${page}&pageSize=${pageSize}`;
+    if (name) {
+      url += `&name=${encodeURIComponent(name)}`;
+    }
+    return this.api.get<Product[]>(url);
   }
 
   addProduct(product: Partial<Product>): Observable<Product> {

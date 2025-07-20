@@ -36,6 +36,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin,InventoryManager")]
     public async Task<IActionResult> Add([FromBody] AddProductRequest request)
     {
         var command = new AddProductCommand(request.Name, request.Inventory);
